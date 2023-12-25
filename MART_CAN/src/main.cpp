@@ -1,5 +1,7 @@
 #include <Arduino.h>
+#include "MART_CAN.h"
 
+CAN_BUS can(5);
 // put function declarations here:
 int myFunction(int, int);
 
@@ -10,6 +12,7 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+
 }
 
 // put function definitions here:
