@@ -9,7 +9,6 @@
 #include "CAN_DATA.h"
 #include "common.h"
 
-
 class CAN_BUS
 {
 
@@ -41,16 +40,26 @@ public:
     template <typename... Args>
     bool getPacket(unsigned long canId, Args &...args)
     {
-        const CanPacketRawData *packet = DataIN.getPacketById(canId);
-        if (packet != nullptr)
+        std::size_t size = (arraySizeInBits(args) + ...);
+        if (size > 64)
         {
-            unpackCANMessage(packet->bytes, args...);
-            return true;
+            Serial.println((String) "Error!, packetID: " + canId + " size = " + size + " >64");
+            return false;
         }
+
         else
         {
-            Serial.println("No matching packet found.");
-            return false;
+            const CanPacketRawData *packet = DataIN.getPacketById(canId);
+            if (packet != nullptr)
+            {
+                unpackCANMessage(packet->bytes, args...);
+                return true;
+            }
+            else
+            {
+                Serial.println("No matching packet found.");
+                return false;
+            }
         }
     }
 
@@ -74,15 +83,37 @@ public:
     template <typename... Args>
     void setPacket(unsigned long canId, Args &&...args)
     {
-        uint8_t *outputArray = DataOUT.dataRaw.bytes;
-        std::fill_n(outputArray, 8, 0x00); // Initialize with 0x00
-        size_t offset = 0;
-        (..., (offset = packArgument(std::forward<Args>(args), outputArray, offset)));
-        DataOUT.dataRaw.id = canId;
-        DataOUT.dataRaw.size = sizeof...(Args);
-        DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
-        DataOUT.dataRaw.rrf = (DataOUT.dataRaw.id & 0x40000000) != 0;
-        DataOUT.addPacket(DataOUT.dataRaw);
+        std::size_t size = (arraySizeInBits(args) + ...);
+        if (size > 64)
+        {
+            Serial.println((String) "Error!, packetID: " + canId + " size = " + size + " >8");
+        }
+        else
+        {
+
+            DataOUT.dataRaw.size = size;
+            uint8_t *outputArray = DataOUT.dataRaw.bytes;
+            std::fill_n(outputArray, 8, 0x00); // Initialize with 0x00
+            size_t offset = 0;
+            (..., (offset = packArgument(std::forward<Args>(args), outputArray, offset)));
+            DataOUT.dataRaw.id = canId;
+
+            DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
+            DataOUT.dataRaw.rrf = (DataOUT.dataRaw.id & 0x40000000) != 0;
+            DataOUT.addPacket(DataOUT.dataRaw);
+        }
+    }
+    // Function template to calculate size in bits of a single array
+    template <typename T, std::size_t N>
+    constexpr std::size_t arraySizeInBits(const T (&)[N])
+    {
+        return sizeof(T) * N * 8; // Size of each element times number of elements times 8 bits/byte
+    }
+    // Function template to calculate size in bits of a single array
+    template <std::size_t N>
+    constexpr std::size_t arraySizeInBits(const bool (&)[N])
+    {
+        return N; // 1 bit for each bool
     }
 
     // Helper function to pack a single array
@@ -115,7 +146,7 @@ public:
         Serial.println("]");
     }
 
-private:
+    // private:
     bool readBytes();
     bool writeBytes();
 
@@ -137,6 +168,40 @@ private:
             }
         }
         return offset;
+    }
+
+    size_t packBoolArrayAsBits(const bool *array, size_t N, uint8_t *outputArray, size_t offset)
+    {
+        size_t byteIndex = 0;    // Index of the current byte in the output array
+        uint8_t currentByte = 0; // Current byte being constructed
+        size_t bitIndex = 0;     // Bit position in the current byte
+
+        for (size_t i = 0; i < N; ++i)
+        {
+            // Set the corresponding bit in currentByte if the boolean value is true
+            if (array[i])
+            {
+                currentByte |= (1 << bitIndex);
+            }
+
+            // Move to the next bit
+            bitIndex++;
+
+            // Check if we have filled up the current byte or reached the end of the array
+            if (bitIndex == 8 || i == N - 1)
+            {
+                // Store the constructed byte in the output array
+                if (offset + byteIndex < 8)
+                { // Check to avoid writing beyond the output array
+                    outputArray[offset + byteIndex] = currentByte;
+                }
+                byteIndex++;
+                bitIndex = 0;
+                currentByte = 0; // Reset for the next byte
+            }
+        }
+
+        return offset + byteIndex; // Return the new offset
     }
     // Helper function to process a single argument
     template <typename T, size_t N>
@@ -184,40 +249,6 @@ private:
         return processArgument(array, outputArray, offset); // Directly call processArgument
     }
 
-    size_t packBoolArrayAsBits(const bool *array, size_t N, uint8_t *outputArray, size_t offset)
-    {
-        size_t byteIndex = 0;    // Index of the current byte in the output array
-        uint8_t currentByte = 0; // Current byte being constructed
-        size_t bitIndex = 0;     // Bit position in the current byte
-
-        for (size_t i = 0; i < N; ++i)
-        {
-            // Set the corresponding bit in currentByte if the boolean value is true
-            if (array[i])
-            {
-                currentByte |= (1 << bitIndex);
-            }
-
-            // Move to the next bit
-            bitIndex++;
-
-            // Check if we have filled up the current byte or reached the end of the array
-            if (bitIndex == 8 || i == N - 1)
-            {
-                // Store the constructed byte in the output array
-                if (offset + byteIndex < 8)
-                { // Check to avoid writing beyond the output array
-                    outputArray[offset + byteIndex] = currentByte;
-                }
-                byteIndex++;
-                bitIndex = 0;
-                currentByte = 0; // Reset for the next byte
-            }
-        }
-
-        return offset + byteIndex; // Return the new offset
-    }
-
     ///*****************************************UNPACK*****************************************
 
     template <size_t N>
@@ -253,7 +284,8 @@ private:
     template <size_t N>
     void unpackArray(const uint8_t *&inputArray, bool (&outputArray)[N], size_t &offset)
     {
-
+        Serial.println();
+        Serial.print((String) "Offset: " + offset);
         for (size_t i = 0; i < N; ++i)
         {
             // Extract each bit as a boolean value
