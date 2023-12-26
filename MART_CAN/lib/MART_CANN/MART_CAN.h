@@ -17,6 +17,10 @@ public:
     MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
 
+    struct Config {
+        bool respondToRRF;
+    } config; 
+
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
     CAN_BUS(int pinCs) : _CAN(pinCs)
     {
@@ -32,6 +36,9 @@ public:
 
     // Sends all stored data packets in DataOUT
     bool send();
+
+    // Sends a specific stored data packet in DataOUT
+    bool send(unsigned long id);
 
     // Receives data packets and stores them in DataIN
     void receive();

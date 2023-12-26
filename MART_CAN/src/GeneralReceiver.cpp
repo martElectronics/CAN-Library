@@ -31,9 +31,9 @@ void loop()
 
    CAN.receive();
    CAN.getPacket(canid, iInt1, iShort2);
-    CAN.getPacket(canid1, iInt2);
-    CAN.getPacket(canid2, iFloat2);
-    CAN.getPacket(canid3, iFloat1, iInt1);
+   CAN.getPacket(canid1, iInt2);
+   CAN.getPacket(canid2, iFloat2);
+   CAN.getPacket(canid3, iFloat1, iInt1);
 
    CAN.printArray(iInt1);
    // CAN.printArray(iShort2);
