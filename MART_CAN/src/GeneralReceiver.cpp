@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <MART_CAN.h>
 
-// put function declarations here:
 
 CAN_BUS CAN(5);
 unsigned long canid = 100;
