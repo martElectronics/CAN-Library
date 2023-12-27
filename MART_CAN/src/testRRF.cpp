@@ -1,3 +1,5 @@
+
+//*******This sketch simulates a rrf request and send the corresponding data (only for simulation purposes)
 #include <Arduino.h>
 #include "MART_CAN.h"
 
