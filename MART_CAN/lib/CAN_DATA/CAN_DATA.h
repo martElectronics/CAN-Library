@@ -67,9 +67,9 @@ public:
 
     // Executes a provided function on each packet
     template <typename Func>
-    void forEachPacket(Func func) const
+    void forEachPacket(Func func) 
     {
-        for (const auto &packet : packets)
+        for ( auto &packet : packets)
         {
             func(packet);
         }

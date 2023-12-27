@@ -207,14 +207,21 @@ public:
     //Test by software if the given IDs are accepted by the created filters or not
     void testFilters(const std::vector<uint16_t> &testIds);
 
+     void setPacketTimer(unsigned long packetID, unsigned long time);
+
     private:
  
     struct RRFIds {
         std::vector<unsigned long> INRRFid;
         std::vector<unsigned long> OUTRRFid;
     };
+     struct PacketTimer {
+        unsigned long packetID;
+        unsigned long interval;
+    };
+    std::vector<PacketTimer> packetTimers;
+
     std::vector<RRFIds> rrfIdsList; // Vector holding INRRFid and OUTRRFid vectors
-    
     MCP2515Configurator configurator;
 
     bool readBytes();
