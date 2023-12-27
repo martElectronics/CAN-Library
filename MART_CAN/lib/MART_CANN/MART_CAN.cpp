@@ -183,6 +183,7 @@ void CAN_BUS::receive()
     }
 }
 
+//Configures the RRF pairs
 void CAN_BUS::setRRFId(unsigned long inId, unsigned long outId)
 {
     // Search for an existing inId
@@ -243,4 +244,54 @@ bool CAN_BUS::searchOutId(unsigned long outId)
         }
     }
     return (ok);
+}
+
+//Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
+bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
+{
+    bool ok;
+    ok=configurator.calculateFiltersAndMasks(ids);
+    
+    if(ok)
+    {
+    //Shifts the calculated values so a leading 0 is placed.
+    configurator.shiftValues(4);
+    //printFilters();
+    int filterIndex = 0;
+
+    for (size_t i = 0; i < configurator.masks.size(); ++i) {
+        _CAN.init_Mask(i, 0, configurator.masks[i]); // Initialize mask
+
+        // Initialize filters associated with this mask
+        for (size_t j = 0; j < configurator.filters[i].size(); ++j) {
+            _CAN.init_Filt(filterIndex++, 0, configurator.filters[i][j]);
+        }
+    }
+    }
+    else
+    {
+       DEBUG_PRINTLN("Too many filters created");
+    }
+
+    //Delete the saved masks and filters to save memory
+    if(config.autoRemoveStoredFilters)
+    {
+        configurator.filters.clear();
+        configurator.filters_shifted.clear();
+        configurator.masks.clear();
+        configurator.masks_shifted.clear();
+    }
+
+    return ok;
+}
+
+void CAN_BUS::printFilters()
+{
+    configurator.printCalculatedValues();
+
+}
+
+ void CAN_BUS::testFilters(const std::vector<uint16_t> &testIds)
+{
+    configurator.testFilters(testIds);
 }
