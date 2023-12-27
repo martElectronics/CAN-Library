@@ -9,6 +9,7 @@
 #include "mcp_can.h"
 #include "CAN_DATA.h"
 #include "common.h"
+#include "MCP2515_Config.h"
 
 
 class CAN_BUS
@@ -18,11 +19,13 @@ public:
     // CONVERTER converter;
     MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
+    
 
     struct Config {
-        bool respondToRRF;
-        bool autoRemoveRRFPacket;
-        bool simulating;
+        bool respondToRRF; //Automaticaly respond to a RRF
+        bool autoRemoveRRFPacket; //Automaticaly delete a received rrf when the requested data is sent
+        bool simulating; //Set to true for testing when no MCP2515 are connected to the microcontroller
+        bool autoRemoveStoredFilters; //Removes the stored masks and filters when applied to the MCP2515 registers to save memory
     } config; 
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
@@ -38,6 +41,7 @@ public:
         config.respondToRRF=true;
         config.autoRemoveRRFPacket=true;
         config.simulating=false;
+        config.autoRemoveStoredFilters=true;
     }
 
     // Destructor
@@ -191,7 +195,17 @@ public:
         }
         Serial.println("]");
     }
+    //Configures the RRF pairs
     void setRRFId(unsigned long inId, unsigned long outId);
+
+    //Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
+    bool setFilters(const std::vector<uint16_t> &ids);
+
+    //Prints the calculated masks and filters
+    void printFilters();
+
+    //Test by software if the given IDs are accepted by the created filters or not
+    void testFilters(const std::vector<uint16_t> &testIds);
 
     private:
  
@@ -201,6 +215,8 @@ public:
     };
     std::vector<RRFIds> rrfIdsList; // Vector holding INRRFid and OUTRRFid vectors
     
+    MCP2515Configurator configurator;
+
     bool readBytes();
     bool writeBytes();
      // Method to search for an InID and return the associated OUTids vector
