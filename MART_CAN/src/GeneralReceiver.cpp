@@ -3,17 +3,7 @@
 
 
 CAN_BUS CAN(5);
-unsigned long canid = 100;
-unsigned long canid1 = 101;
-unsigned long canid2 = 102;
-unsigned long canid3 = 103;
-unsigned long canid4 = 104;
-short iShort1[1] ;
-short iShort2[2] ;
-int iInt1[1] ;
-int iInt2[2] ;
-float iFloat1[1] ;
-float iFloat2[2] ;
+
 
 unsigned long removeableIDs[2]={101,103};
 void setup()
@@ -27,17 +17,38 @@ void setup()
 
 void loop()
 {
+   
+   bool dataBool16[16];
+   short dataShort1[1],dataShort2[2];
+   int dataInt1[1],dataInt2[2];
+   float dataFloat1[1];
 
+   //Se leen los datos del bus y se guardan en memoria (DataIN)
    CAN.receive();
-   CAN.getPacket(canid, iInt1, iShort2);
-   CAN.getPacket(canid1, iInt2);
-   CAN.getPacket(canid2, iFloat2);
-   CAN.getPacket(canid3, iFloat1, iInt1);
+   //Se procesan los primeros 4 bytes del paquete con ID=100 como "int" y se guardan en dataInt1
+   CAN.getPacket(100, dataInt1); 
 
-   CAN.printArray(iInt1);
-   // CAN.printArray(iShort2);
-   // CAN.printArray(iFloat2);
-   // CAN.printArray(iBool16);
+   //Se procesan los 8 bytes del paquete con ID=101 como "int" (de 4 en 4) y se guardan en dataInt2 
+   CAN.getPacket(101, dataInt2); 
+
+   //Se procesan los primeros 4 bytes del paquete con ID=102 como "short"(de 2 en 2) y se guardan en dataShort2
+   //Los restantes se procesan como "int" y se guardan en dataInt1
+   CAN.getPacket(102, dataShort2, dataInt1); 
+
+   //Se procesan los primeros 2 bytes del paquete con ID=200 como "bool"(de bit en bit) y se guardan en dataBool16
+   //Los 4 bytes siguientes se procesan como "float" y los dos últimos como "short" 
+   CAN.getPacket(200, dataBool16, dataFloat1,dataShort1);
+
+   //getPacket devuelve "false" si se intentan leer más de 8 bytes o si el paquete con la ID buscada no existe
+   if(!CAN.getPacket(200, dataBool16, dataFloat1,dataShort1,dataInt1))
+   {
+      Serial.println("Error. Se están intentando leer más de 8 bytes");
+   }
+
+   //Muestra la información almacenada en los arrays por pantalla
+   CAN.printArray(dataInt2);
+   CAN.printArray(dataBool16);
+
 }
 
     

@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "MART_CAN.h"
 
-CAN_BUS can(5);
+CAN_BUS CAN(5);
 
 CanPacketRawData p1, p2;
 byte dataBytes[8];
@@ -13,40 +13,51 @@ unsigned long ii[1] = {101};
 void setup()
 {
     dataBytes[0] = 5;
-    can.DataOUT.setRemovableIds(ii, 1);
+    CAN.DataOUT.setRemovableIds(ii, 1);
 
     Serial.begin(9600);
     Serial.println();
-    can.config.simulating = true;
-    // can.config.autoRemoveRRFPacket=false;
+    CAN.config.simulating = true;
+    // CAN.config.autoRemoveRRFPacket=false;
 
-    // Adding some sample RRFIds data
-    can.setRRFId(1, 100); // INRRFid: 0x01, OUTRRFid: 0x100
-    can.setRRFId(1, 101); // Adding another OUTRRFid to the same INRRFid
-    can.setRRFId(2, 100); // A different INRRFid
-    can.setRRFId(3, 200); // A different INRRFid
+    ///Configuración de las asociaciaciones de paquetes RRF (petición de datos remota)
 
-    can.setPacket(100, dataBytes);
-    can.setPacket(101, dataBytes);
-    can.setPacket(200, dataBytes);
-    can.setPacket(22);
-    can.setPacket(300, dataBytes);
+    //Cuando se reciba un paquete RRF con ID=1, se enviarán los paquetes con ID=100 e ID=101 automaticamente 
+    //si están guardados en memoria
+    CAN.setRRFId(1, 100);
+    CAN.setRRFId(1, 101); 
+
+    //Cuando se reciba un paquete RRF con ID=200, ID=201 o ID=202, se enviará el paquete con ID=301 automaticamente 
+    //si está guardado en memoria
+    CAN.setRRFId(200, 301); 
+    CAN.setRRFId(201, 301); 
+    CAN.setRRFId(202, 301); 
+
+
+
+    CAN.setPacket(100, dataBytes);
+    CAN.setPacket(101, dataBytes);
+    CAN.setPacket(200, dataBytes);
+    CAN.setPacket(22);
+    CAN.setPacket(300, dataBytes);
 
     p1.id = 1;
     p1.size = 8;
     p1.rrf = true;
     p1.typeExtendedId = false;
-    can.DataIN.dataRaw = p1;
-    can.receive();
+    CAN.DataIN.dataRaw = p1;
+    CAN.receive();
 
     p2 = p1;
     p2.id = 2;
-    can.DataIN.dataRaw = p2;
-    can.receive();
+    CAN.DataIN.dataRaw = p2;
+    CAN.receive();
 
-    can.DataIN.printAllPackets();
+    CAN.DataIN.printAllPackets();
 
-    can.send();
+    CAN.send();
+
+
 }
 
 void loop()

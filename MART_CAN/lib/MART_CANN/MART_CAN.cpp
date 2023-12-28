@@ -275,7 +275,10 @@ bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
     {
         // Shifts the calculated values so a leading 0 is placed.
         configurator.shiftValues(4);
-        // printFilters();
+        if(DEBUG_MODE)
+        {
+        printFilters();
+        }
         int filterIndex = 0;
 
         for (size_t i = 0; i < configurator.masks.size(); ++i)

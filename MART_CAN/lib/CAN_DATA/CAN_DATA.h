@@ -89,7 +89,7 @@ public:
     }
 
     // Overloaded method to handle the ALL condition
-    void addRemovableIds()
+    void setRemovableIds()
     {
         allIdsRemovable = true;
         removableIds.clear(); // Clear specific IDs as all are now removable

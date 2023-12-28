@@ -5,12 +5,11 @@
 #include <Arduino.h>
 #include <bitset>
 #include <cstring>
-#include <optional> 
+#include <optional>
 #include "mcp_can.h"
 #include "CAN_DATA.h"
 #include "common.h"
 #include "MCP2515_Config.h"
-
 
 class CAN_BUS
 {
@@ -19,14 +18,14 @@ public:
     // CONVERTER converter;
     MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
-    
 
-    struct Config {
-        bool respondToRRF; //Automaticaly respond to a RRF
-        bool autoRemoveRRFPacket; //Automaticaly delete a received rrf when the requested data is sent
-        bool simulating; //Set to true for testing when no MCP2515 are connected to the microcontroller
-        bool autoRemoveStoredFilters; //Removes the stored masks and filters when applied to the MCP2515 registers to save memory
-    } config; 
+    struct Config
+    {
+        bool respondToRRF;            // Automaticaly respond to a RRF
+        bool autoRemoveRRFPacket;     // Automaticaly delete a received rrf when the requested data is sent
+        bool simulating;              // Set to true for testing when no MCP2515 are connected to the microcontroller
+        bool autoRemoveStoredFilters; // Removes the stored masks and filters when applied to the MCP2515 registers to save memory
+    } config;
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
     CAN_BUS(int pinCs) : _CAN(pinCs)
@@ -37,11 +36,11 @@ public:
             Serial.println("Error Initializing MCP2515...");
         _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
 
-        //Default configuration
-        config.respondToRRF=true;
-        config.autoRemoveRRFPacket=true;
-        config.simulating=false;
-        config.autoRemoveStoredFilters=true;
+        // Default configuration
+        config.respondToRRF = true;
+        config.autoRemoveRRFPacket = true;
+        config.simulating = false;
+        config.autoRemoveStoredFilters = true;
     }
 
     // Destructor
@@ -63,12 +62,12 @@ public:
     template <typename... Args>
     bool getPacket(unsigned long canId, Args &...args)
     {
-        bool ok=true;
+        bool ok = true;
         std::size_t size = (arraySizeInBits(args) + ...);
         if (size > 64)
         {
             ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >64");
-           ok=false;
+            ok = false;
         }
 
         else
@@ -77,43 +76,45 @@ public:
             if (packet != nullptr)
             {
                 unpackCANMessage(packet->bytes, args...);
-                ok=true;
+                ok = true;
             }
             else
             {
                 ERROR_PRINTLN("Error: No matching packet found.");
-                 ok=true;
+                ok = true;
             }
         }
-        return (ok||config.simulating);
+        return (ok || config.simulating);
     }
 
     // Retrieves the last received packet and unpacks its data
     template <typename... Args>
     bool getPacket(Args &...args)
     {
-        bool ok=true;
+        bool ok = true;
         if (DataIN.lastAddedPacket != nullptr)
         {
             unpackCANMessage(DataIN.lastAddedPacket->bytes, args...);
-            ok=true;
+            ok = true;
         }
         else
         {
             ERROR_PRINTLN("Error: No packet has been added yet.");
-            ok=false;
+            ok = false;
         }
-        return (ok||config.simulating);
+        return (ok || config.simulating);
     }
 
     // Packs provided data into a CAN packet and stores it in DataOUT
     template <typename... Args>
     void setPacket(unsigned long canId, Args &&...args)
     {
+        bool ok = true;
         std::size_t size = (arraySizeInBits(args) + ...);
         if (size > 64)
         {
             ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >8");
+            ok=false;
         }
         else
         {
@@ -126,16 +127,17 @@ public:
             DataOUT.dataRaw.id = canId;
 
             DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
-           // DataOUT.dataRaw.rrf = (DataOUT.dataRaw.id & 0x40000000) != 0;
-           DataOUT.dataRaw.rrf=false;
-            //Checks if there is a RRF rule stored involving that packet. If so, make 
-            //WaitForRRF true so send() doesn't send that package unless a rrf is received
-            if(searchOutId(canId))
+            // DataOUT.dataRaw.rrf = (DataOUT.dataRaw.id & 0x40000000) != 0;
+            DataOUT.dataRaw.rrf = false;
+            // Checks if there is a RRF rule stored involving that packet. If so, make
+            // WaitForRRF true so send() doesn't send that package unless a rrf is received
+            if (searchOutId(canId))
             {
-                DataOUT.dataRaw.WaitForRRF=true;
+                DataOUT.dataRaw.WaitForRRF = true;
             }
-            else{
-                DataOUT.dataRaw.WaitForRRF=false;
+            else
+            {
+                DataOUT.dataRaw.WaitForRRF = false;
             }
             DataOUT.addPacket(DataOUT.dataRaw);
         }
@@ -145,13 +147,12 @@ public:
     void setPacket(unsigned long canId)
     {
         DataOUT.dataRaw.size = 0;
-        DataOUT.dataRaw.rrf=true;
-        DataOUT.dataRaw.id=canId;
+        DataOUT.dataRaw.rrf = true;
+        DataOUT.dataRaw.id = canId;
         DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
-        DataOUT.dataRaw.WaitForRRF=false;
+        DataOUT.dataRaw.WaitForRRF = false;
         DataOUT.addPacket(DataOUT.dataRaw);
     }
-
 
     // Function template to calculate size in bits of a single array
     template <typename T, std::size_t N>
@@ -195,27 +196,28 @@ public:
         }
         Serial.println("]");
     }
-    //Configures the RRF pairs
+    // Configures the RRF pairs
     void setRRFId(unsigned long inId, unsigned long outId);
 
-    //Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
+    // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
     bool setFilters(const std::vector<uint16_t> &ids);
 
-    //Prints the calculated masks and filters
+    // Prints the calculated masks and filters
     void printFilters();
 
-    //Test by software if the given IDs are accepted by the created filters or not
+    // Test by software if the given IDs are accepted by the created filters or not
     void testFilters(const std::vector<uint16_t> &testIds);
 
-     void setPacketTimer(unsigned long packetID, unsigned long time);
+    void setPacketTimer(unsigned long packetID, unsigned long time);
 
-    private:
- 
-    struct RRFIds {
+private:
+    struct RRFIds
+    {
         std::vector<unsigned long> INRRFid;
         std::vector<unsigned long> OUTRRFid;
     };
-     struct PacketTimer {
+    struct PacketTimer
+    {
         unsigned long packetID;
         unsigned long interval;
     };
@@ -226,31 +228,34 @@ public:
 
     bool readBytes();
     bool writeBytes();
-     // Method to search for an InID and return the associated OUTids vector
-    std::optional<std::vector<unsigned long>> getOutIdsByInId(unsigned long inId) ;
+    // Method to search for an InID and return the associated OUTids vector
+    std::optional<std::vector<unsigned long>> getOutIdsByInId(unsigned long inId);
 
     // Method to search for an OUTid and return true if found
     bool searchOutId(unsigned long outId);
 
-     // Method to print all RRFIds
-    void printRRFIds() {
-        for (const auto& rrfIds : rrfIdsList) {
+    // Method to print all RRFIds
+    void printRRFIds()
+    {
+        for (const auto &rrfIds : rrfIdsList)
+        {
             Serial.print("INRRFid: ");
-            for (const auto& id : rrfIds.INRRFid) {
+            for (const auto &id : rrfIds.INRRFid)
+            {
                 Serial.print(id);
                 Serial.print(" ");
             }
             Serial.println(); // New line after printing INRRFid
 
             Serial.print("OUTRRFid: ");
-            for (const auto& id : rrfIds.OUTRRFid) {
+            for (const auto &id : rrfIds.OUTRRFid)
+            {
                 Serial.print(id);
                 Serial.print(" ");
             }
             Serial.println(); // New line after printing OUTRRFid
         }
     }
-
 
     template <typename T, size_t N>
     size_t packSingleArray(const T (&array)[N], uint8_t *outputArray, size_t offset)

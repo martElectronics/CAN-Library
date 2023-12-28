@@ -4,6 +4,7 @@
 #include <Arduino.h>
 
 // Uncomment the following line to enable debugging
+
 #define DEBUG
 
 #ifdef DEBUG
@@ -15,7 +16,8 @@
 #endif
 
 // Uncomment the following line to enable error logging
-//#define ERROR_LOGGING
+
+#define ERROR_LOGGING
 
 #ifdef ERROR_LOGGING
 #define ERROR_PRINT(x)  Serial.print(x)
