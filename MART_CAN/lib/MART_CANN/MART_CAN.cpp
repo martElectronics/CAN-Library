@@ -66,32 +66,51 @@ bool CAN_BUS::writeBytes()
 bool CAN_BUS::send()
 {
     bool success = true;
+    unsigned long currentTime = millis();
 
-    // Use forEachPacket to iterate over all packets in DataOUT
-    DataOUT.forEachPacket([this, &success](const CanPacketRawData &packet)
+    DataOUT.forEachPacket([this, &success, currentTime](CanPacketRawData &packet)
                           {
-        long unsigned int id = packet.id;
-        byte len = packet.size;
-        byte buf[8];
+        // Initially assume the packet does not have a timer and is ready to send
+        bool readyToSend = true;
 
-        // Copy data to buffer 
-        if(!packet.WaitForRRF)
-        {
-        std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
-        if (_CAN.sendMsgBuf(id, packet.typeExtendedId, 8, buf) != CAN_OK) {
-            ERROR_PRINTLN("Error sending message");
-            success = false; // Mark failure but continue sending the rest
-        }
-        else{
-            DEBUG_PRINTLN((String)"Packet sent ID = "+id);
-        }
-        } 
-        else
-        {
-            DEBUG_PRINTLN((String)"Packet not send because is waiting a RRF ID = "+id);
-        } }
+        // Check for a timer associated with this packet
+        for (const auto& timer : packetTimers) {
+            if (timer.packetID == packet.id) {
 
-    );
+                // Check if the current time is past the next scheduled send time
+                if (currentTime < packet.nextSendTime) {
+                    readyToSend = false; // Not yet time to send this packet
+                }
+                break; // Timer found, no need to check further
+            }
+        }
+
+        if (readyToSend && !packet.WaitForRRF) {
+            byte buf[8];
+            // Copy data to buffer
+            std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
+
+            // Attempt to send the packet
+            if (_CAN.sendMsgBuf(packet.id, packet.typeExtendedId, packet.size, buf) != CAN_OK) {
+                ERROR_PRINTLN("Error sending message");
+                success = false; // Mark failure but continue sending the rest
+            } else {
+                DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
+
+                // Update the next send time for this packet if it has a timer
+                for (auto& timer : packetTimers) {
+                    if (timer.packetID == packet.id) {
+                        
+                        packet.nextSendTime = currentTime + timer.interval;
+                        Serial.println(DataOUT.dataRaw.nextSendTime);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (packet.WaitForRRF) {
+            DEBUG_PRINTLN((String)"Packet not sent because it is waiting for a RRF ID = " + packet.id);
+        } });
 
     return success;
 }
@@ -127,7 +146,7 @@ bool CAN_BUS::send(unsigned long id)
     }
     else
     {
-       DEBUG_PRINTLN("NULLPTR");
+        DEBUG_PRINTLN("NULLPTR");
         success = false;
     }
 
@@ -151,7 +170,7 @@ bool CAN_BUS::sendRequestedRRF(unsigned long id)
     else
     {
         ok = false;
-       DEBUG_PRINT("No OUTRRFids found for INRRFid 0x");
+        DEBUG_PRINT("No OUTRRFids found for INRRFid 0x");
         DEBUG_PRINTLN(id);
     }
     // returns ok if all the ids that ere config using setRRFId are found and sent correctly
@@ -183,7 +202,7 @@ void CAN_BUS::receive()
     }
 }
 
-//Configures the RRF pairs
+// Configures the RRF pairs
 void CAN_BUS::setRRFId(unsigned long inId, unsigned long outId)
 {
     // Search for an existing inId
@@ -246,35 +265,40 @@ bool CAN_BUS::searchOutId(unsigned long outId)
     return (ok);
 }
 
-//Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
+// Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
 bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
 {
     bool ok;
-    ok=configurator.calculateFiltersAndMasks(ids);
-    
-    if(ok)
+    ok = configurator.calculateFiltersAndMasks(ids);
+
+    if (ok)
     {
-    //Shifts the calculated values so a leading 0 is placed.
-    configurator.shiftValues(4);
-    //printFilters();
-    int filterIndex = 0;
-
-    for (size_t i = 0; i < configurator.masks.size(); ++i) {
-        _CAN.init_Mask(i, 0, configurator.masks[i]); // Initialize mask
-
-        // Initialize filters associated with this mask
-        for (size_t j = 0; j < configurator.filters[i].size(); ++j) {
-            _CAN.init_Filt(filterIndex++, 0, configurator.filters[i][j]);
+        // Shifts the calculated values so a leading 0 is placed.
+        configurator.shiftValues(4);
+        if(DEBUG_MODE)
+        {
+        printFilters();
         }
-    }
+        int filterIndex = 0;
+
+        for (size_t i = 0; i < configurator.masks.size(); ++i)
+        {
+            _CAN.init_Mask(i, 0, configurator.masks[i]); // Initialize mask
+
+            // Initialize filters associated with this mask
+            for (size_t j = 0; j < configurator.filters[i].size(); ++j)
+            {
+                _CAN.init_Filt(filterIndex++, 0, configurator.filters[i][j]);
+            }
+        }
     }
     else
     {
-       DEBUG_PRINTLN("Too many filters created");
+        DEBUG_PRINTLN("Too many filters created");
     }
 
-    //Delete the saved masks and filters to save memory
-    if(config.autoRemoveStoredFilters)
+    // Delete the saved masks and filters to save memory
+    if (config.autoRemoveStoredFilters)
     {
         configurator.filters.clear();
         configurator.filters_shifted.clear();
@@ -288,10 +312,25 @@ bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
 void CAN_BUS::printFilters()
 {
     configurator.printCalculatedValues();
-
 }
 
- void CAN_BUS::testFilters(const std::vector<uint16_t> &testIds)
+void CAN_BUS::testFilters(const std::vector<uint16_t> &testIds)
 {
     configurator.testFilters(testIds);
+}
+
+void CAN_BUS::setPacketTimer(unsigned long packetID, unsigned long time)
+{
+    // Check if the timer already exists and update it
+    for (auto &timer : packetTimers)
+    {
+        if (timer.packetID == packetID)
+        {
+            timer.interval = time;
+            return;
+        }
+    }
+
+    // If not found, add a new timer
+    packetTimers.push_back({packetID, time});
 }

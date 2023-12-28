@@ -67,9 +67,9 @@ public:
 
     // Executes a provided function on each packet
     template <typename Func>
-    void forEachPacket(Func func) const
+    void forEachPacket(Func func) 
     {
-        for (const auto &packet : packets)
+        for ( auto &packet : packets)
         {
             func(packet);
         }
@@ -89,7 +89,7 @@ public:
     }
 
     // Overloaded method to handle the ALL condition
-    void addRemovableIds()
+    void setRemovableIds()
     {
         allIdsRemovable = true;
         removableIds.clear(); // Clear specific IDs as all are now removable

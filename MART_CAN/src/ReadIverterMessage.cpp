@@ -1,3 +1,4 @@
+//*******This sketch is prepared to read the inverter message with id 20;
 #include <Arduino.h>
 #include <MART_CAN.h>
 

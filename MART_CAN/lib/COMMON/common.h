@@ -4,7 +4,8 @@
 #include <Arduino.h>
 
 // Uncomment the following line to enable debugging
-//#define DEBUG
+
+#define DEBUG
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)  Serial.print(x)
@@ -15,7 +16,8 @@
 #endif
 
 // Uncomment the following line to enable error logging
-//#define ERROR_LOGGING
+
+#define ERROR_LOGGING
 
 #ifdef ERROR_LOGGING
 #define ERROR_PRINT(x)  Serial.print(x)
@@ -32,6 +34,7 @@ struct CanPacketRawData {
     bool rrf;
     byte typeExtendedId;
     bool WaitForRRF;
+    unsigned long nextSendTime;
 };
 
 #endif // COMMON_H
