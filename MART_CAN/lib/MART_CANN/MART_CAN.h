@@ -30,7 +30,7 @@ public:
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
     CAN_BUS(int pinCs) : _CAN(pinCs)
     {
-        if (_CAN.begin(MCP_ANY, CAN_250KBPS, MCP_8MHZ) == CAN_OK)
+        if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
             Serial.println("MCP2515 Initialized Successfully!");
         else
             Serial.println("Error Initializing MCP2515...");
@@ -107,7 +107,7 @@ public:
 
     // Packs provided data into a CAN packet and stores it in DataOUT
     template <typename... Args>
-    void setPacket(unsigned long canId, Args &&...args)
+    bool setPacket(unsigned long canId, Args &&...args)
     {
         bool ok = true;
         std::size_t size = (arraySizeInBits(args) + ...);
@@ -141,6 +141,7 @@ public:
             }
             DataOUT.addPacket(DataOUT.dataRaw);
         }
+        return ok;
     }
 
     // Packs RRF message
@@ -370,6 +371,20 @@ private:
                 outputArray[i] |= static_cast<int>(inputArray[offset + byte]) << ((sizeof(int) - 1 - byte) * 8);
             }
             offset += sizeof(int);
+        }
+    }
+    template <size_t N>
+    void unpackArray(const uint8_t *&inputArray, unsigned long (&outputArray)[N], size_t &offset)
+    {
+        for (size_t i = 0; i < N; ++i)
+        {
+            outputArray[i] = 0;
+            // Convert from big-endian to little-endian
+            for (int byte = sizeof(unsigned long) - 1; byte >= 0; --byte)
+            {
+                outputArray[i] |= static_cast<unsigned long>(inputArray[offset + byte]) << ((sizeof(unsigned long) - 1 - byte) * 8);
+            }
+            offset += sizeof(unsigned long);
         }
     }
 

@@ -21,15 +21,30 @@ public:
 
     // Adds a CAN packet to the storage, keeping packets sorted by their ID
     void addPacket(const CanPacketRawData &packet)
-    {
-        auto it = std::lower_bound(packets.begin(), packets.end(), packet,
-                                   [](const CanPacketRawData &a, const CanPacketRawData &b)
-                                   {
-                                       return a.id < b.id;
-                                   });
-        auto insertedIt = packets.insert(it, packet); // Insert and get iterator to the new element
-        lastAddedPacket = &(*insertedIt);             // Update the pointer to the last added packet
+{
+    // Use std::find_if to check if a packet with the same id already exists
+    auto it = std::find_if(packets.begin(), packets.end(), [&packet](const CanPacketRawData &a)
+                           {
+                               return a.id == packet.id;
+                           });
+
+    if (it != packets.end()) {
+        // If a packet with the same id is found, update its information
+        it->size = packet.size;
+        std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(it->bytes));
+        lastAddedPacket = &(*it); // Update the pointer to the last updated packet
+    } else {
+        // If no packet with the same id exists, add the new packet in sorted order
+        auto insertIt = std::lower_bound(packets.begin(), packets.end(), packet,
+                                         [](const CanPacketRawData &a, const CanPacketRawData &b)
+                                         {
+                                             return a.id < b.id;
+                                         });
+        auto insertedIt = packets.insert(insertIt, packet); // Insert and get iterator to the new element
+        lastAddedPacket = &(*insertedIt);                   // Update the pointer to the last added packet
     }
+}
+
 
     // Removes a CAN packet from the storage by its ID
     void removePacket(unsigned long id)
