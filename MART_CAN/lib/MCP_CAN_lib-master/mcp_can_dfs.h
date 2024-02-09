@@ -446,7 +446,6 @@
 #define MCP_CLOCK_SELECT 3
 #define MCP_CLKOUT_ENABLE 4
 
-
 #define CAN_4K096BPS 0
 #define CAN_5KBPS    1
 #define CAN_10KBPS   2

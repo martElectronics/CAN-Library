@@ -24,6 +24,7 @@
 #ifndef _MCP2515_H_
 #define _MCP2515_H_
 
+#include "common.h"
 #include "mcp_can_dfs.h"
 
 

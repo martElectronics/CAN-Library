@@ -6,7 +6,7 @@
  * If a message is available, it reads the message ID, length, and data bytes
  * into the DataIN structure. It also determines whether the message uses an
  * extended ID and if it is a Remote Request Frame (RRF).
- * @return true if a message was successfully read, false otherwise.
+ * return true if a message was successfully read, false otherwise.
  */
 bool CAN_BUS::readBytes()
 {
@@ -181,7 +181,6 @@ bool CAN_BUS::sendRequestedRRF(unsigned long id)
  * Receives messages from the CAN bus and stores them in DataIN.
  * This method repeatedly calls readBytes() to read any available CAN messages.
  * Each read message is added to the DataIN structure for later processing.
- * This method is typically called within a loop to continuously read data.
  */
 void CAN_BUS::receive()
 {
@@ -268,13 +267,14 @@ bool CAN_BUS::searchOutId(unsigned long outId)
 // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
 bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
 {
+    /*
     bool ok;
     ok = configurator.calculateFiltersAndMasks(ids);
 
     if (ok)
     {
         // Shifts the calculated values so a leading 0 is placed.
-        configurator.shiftValues(4);
+       // configurator.shiftValues(4);
         if(DEBUG_MODE)
         {
         printFilters();
@@ -307,6 +307,8 @@ bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
     }
 
     return ok;
+    */
+   return true;
 }
 
 void CAN_BUS::printFilters()
