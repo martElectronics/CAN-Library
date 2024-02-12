@@ -21,7 +21,13 @@ bool CAN_BUS::readBytes()
             DataIN.dataRaw.typeExtendedId = false;
 
         if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
+        {
+            unsigned long mask = ~(1UL << 30);
+            // Clear the bit at bitPosition
+            DataIN.dataRaw.id &= mask;
             DataIN.dataRaw.rrf = true;
+            DEBUG_PRINTLN("Received RRF");
+        }
         else
             DataIN.dataRaw.rrf = false;
 
@@ -76,7 +82,7 @@ bool CAN_BUS::send()
         // Check for a timer associated with this packet
         for (const auto& timer : packetTimers) {
             if (timer.packetID == packet.id) {
-
+                //Serial.println((String)"Timer pq id:"+timer.packetID);
                 // Check if the current time is past the next scheduled send time
                 if (currentTime < packet.nextSendTime) {
                     readyToSend = false; // Not yet time to send this packet
@@ -90,19 +96,25 @@ bool CAN_BUS::send()
             // Copy data to buffer
             std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
 
+            // if(packet.rrf)
+            // {
+            // unsigned long mask = 1UL << 30;
+
+            //   // Set the bit at bitPosition
+            //   packet.id |= mask;
+            // }
             // Attempt to send the packet
-            if (_CAN.sendMsgBuf(packet.id, packet.typeExtendedId, packet.size, buf) != CAN_OK) {
-                ERROR_PRINTLN("Error sending message");
+            if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
+                Serial.println("Error sending message");
                 success = false; // Mark failure but continue sending the rest
             } else {
-                DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
+                Serial.println((String)"Packet sent ID = " + packet.id);
 
                 // Update the next send time for this packet if it has a timer
                 for (auto& timer : packetTimers) {
                     if (timer.packetID == packet.id) {
                         
                         packet.nextSendTime = currentTime + timer.interval;
-                        Serial.println(DataOUT.dataRaw.nextSendTime);
                         break;
                     }
                 }
@@ -187,6 +199,7 @@ void CAN_BUS::receive()
     if (readBytes() || config.simulating)
     {
         DataIN.addPacket(DataIN.dataRaw);
+        Serial.println((String)"Rx ID: "+DataIN.dataRaw.id);
         // Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
         {

@@ -147,7 +147,7 @@ public:
     // Packs RRF message
     void setPacket(unsigned long canId)
     {
-        DataOUT.dataRaw.size = 0;
+        DataOUT.dataRaw.size = 8;
         DataOUT.dataRaw.rrf = true;
         DataOUT.dataRaw.id = canId;
         DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
