@@ -53,6 +53,8 @@ public:
                                      [id](const CanPacketRawData &packet)
                                      {
                                          return packet.id == id;
+                                         Serial.print("Removed id=");
+                                         Serial.println(packet.id);
                                      }),
                       packets.end());
     }

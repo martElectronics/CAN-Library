@@ -29,7 +29,7 @@ public:
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
     CAN_BUS(int pinCs) : _CAN(pinCs)
-    {
+    {   
         if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
             Serial.println("MCP2515 Initialized Successfully!");
         else
@@ -127,7 +127,6 @@ public:
             DataOUT.dataRaw.id = canId;
 
             DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
-            // DataOUT.dataRaw.rrf = (DataOUT.dataRaw.id & 0x40000000) != 0;
             DataOUT.dataRaw.rrf = false;
             // Checks if there is a RRF rule stored involving that packet. If so, make
             // WaitForRRF true so send() doesn't send that package unless a rrf is received
