@@ -10,7 +10,7 @@
  */
 bool CAN_BUS::readBytes()
 {
-    bool ok;
+    bool ok = false;
     if (!digitalRead(_CAN.pinINT) && !config.simulating)
     {
         byte rxBuf[8];
@@ -21,7 +21,13 @@ bool CAN_BUS::readBytes()
             DataIN.dataRaw.typeExtendedId = false;
 
         if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
+        {
+            unsigned long mask = ~(1UL << 30);
+            // Clear the bit at bitPosition
+            DataIN.dataRaw.id &= mask;
             DataIN.dataRaw.rrf = true;
+            DEBUG_PRINTLN("Received RRF");
+        }
         else
             DataIN.dataRaw.rrf = false;
 
@@ -67,6 +73,20 @@ bool CAN_BUS::send()
 {
     bool success = true;
     unsigned long currentTime = millis();
+    if ((millis() - previousStatusIntervalTime) >= (intervalTime / 3))
+    {
+        numCurrentSamples++;
+        setCANStatusData();
+        previousStatusIntervalTime = millis();
+
+        if (numCurrentSamples > 3)
+        {
+            numRXPaqOK = 0;
+            numTXPaqOK = 0;
+            numErrorPaq = 0;
+            numCurrentSamples = 1;
+        }
+    }
 
     DataOUT.forEachPacket([this, &success, currentTime](CanPacketRawData &packet)
                           {
@@ -76,7 +96,6 @@ bool CAN_BUS::send()
         // Check for a timer associated with this packet
         for (const auto& timer : packetTimers) {
             if (timer.packetID == packet.id) {
-
                 // Check if the current time is past the next scheduled send time
                 if (currentTime < packet.nextSendTime) {
                     readyToSend = false; // Not yet time to send this packet
@@ -86,31 +105,44 @@ bool CAN_BUS::send()
         }
 
         if (readyToSend && !packet.WaitForRRF) {
+
+            //Store the packet ID before the possible ID change if the packet is a RRF
+            unsigned long idAux=packet.id;
             byte buf[8];
             // Copy data to buffer
             std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
 
+            if(packet.rrf)
+            {
+            unsigned long mask = 1UL << 30;
+
+              // Set the bit at bitPosition
+              packet.id |= mask;
+            }
             // Attempt to send the packet
-            if (_CAN.sendMsgBuf(packet.id, packet.typeExtendedId, packet.size, buf) != CAN_OK) {
+            if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
+                numErrorPaq++;
             } else {
-                DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
-
+              DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
+                packet.id=idAux;
                 // Update the next send time for this packet if it has a timer
                 for (auto& timer : packetTimers) {
                     if (timer.packetID == packet.id) {
                         
                         packet.nextSendTime = currentTime + timer.interval;
-                        Serial.println(DataOUT.dataRaw.nextSendTime);
                         break;
                     }
                 }
+                numTXPaqOK++;
             }
         }
         else if (packet.WaitForRRF) {
             DEBUG_PRINTLN((String)"Packet not sent because it is waiting for a RRF ID = " + packet.id);
         } });
+
+    runtimeTime = millis() - previousStatusRuntimeTime;
 
     return success;
 }
@@ -134,7 +166,7 @@ bool CAN_BUS::send(unsigned long id)
 
         // Copy data to buffer
         std::copy(std::begin(packet->bytes), std::end(packet->bytes), std::begin(buf));
-        if (_CAN.sendMsgBuf(id, packet->typeExtendedId, 8, buf) != CAN_OK)
+        if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
         {
             ERROR_PRINTLN("Error sending message");
             success = false; // Mark failure but continue sending the rest
@@ -184,20 +216,24 @@ bool CAN_BUS::sendRequestedRRF(unsigned long id)
  */
 void CAN_BUS::receive()
 {
+    previousStatusRuntimeTime = millis();
     if (readBytes() || config.simulating)
     {
         DataIN.addPacket(DataIN.dataRaw);
-        // Respond to RRF if the option is enabled
+        // Serial.println((String) "Rx ID: " + DataIN.dataRaw.id);
+        //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
         {
 
-            DEBUG_PRINTLN("Sending requested paquets of rrf");
+            // Serial.println("Sending requested paquets of rrf");
             sendRequestedRRF(DataIN.dataRaw.id);
             if (config.autoRemoveRRFPacket)
             {
                 DataIN.removePacket(DataIN.dataRaw.id);
+                // Serial.println("Remove");
             }
         }
+        numRXPaqOK++;
     }
 }
 
@@ -268,47 +304,62 @@ bool CAN_BUS::searchOutId(unsigned long outId)
 bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
 {
     /*
-    bool ok;
-    ok = configurator.calculateFiltersAndMasks(ids);
+        if (_CAN.begin(MCP_STDEXT, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            Serial.print("MCP2515 Init Okay!!\r\n");
+        else
+            Serial.print("MCP2515 Init Failed!!\r\n");
+        bool ok;
 
-    if (ok)
-    {
-        // Shifts the calculated values so a leading 0 is placed.
-       // configurator.shiftValues(4);
-        if(DEBUG_MODE)
+        ok = configurator.calculateFiltersAndMasks(ids);
+        Serial.println("OK1");
+        if (ok)
         {
-        printFilters();
-        }
-        int filterIndex = 0;
-
-        for (size_t i = 0; i < configurator.masks.size(); ++i)
-        {
-            _CAN.init_Mask(i, 0, configurator.masks[i]); // Initialize mask
-
-            // Initialize filters associated with this mask
-            for (size_t j = 0; j < configurator.filters[i].size(); ++j)
+            // Shifts the calculated values so a leading 0 is placed.
+            configurator.shiftValues(0);
+            if (DEBUG_MODE)
             {
-                _CAN.init_Filt(filterIndex++, 0, configurator.filters[i][j]);
+                printFilters();
+            }
+            int filterIndex = 0;
+
+            for (size_t i = 0; i < configurator.masks.size(); ++i)
+            {
+
+                Serial.println("OK2");
+                _CAN.init_Mask(i, 0, configurator.masks[i]); // Initialize mask
+
+                Serial.println("OK3");
+                // Initialize filters associated with this mask
+                for (size_t j = 0; j < configurator.filters[i].size(); ++j)
+                {
+                    //  _CAN.init_Filt(filterIndex++, 0, configurator.filters[i][j]);
+                }
             }
         }
-    }
-    else
-    {
-        DEBUG_PRINTLN("Too many filters created");
-    }
+        else
+        {
+            DEBUG_PRINTLN("Too many filters created");
+        }
 
-    // Delete the saved masks and filters to save memory
-    if (config.autoRemoveStoredFilters)
-    {
-        configurator.filters.clear();
-        configurator.filters_shifted.clear();
-        configurator.masks.clear();
-        configurator.masks_shifted.clear();
-    }
+        // Delete the saved masks and filters to save memory
+        if (config.autoRemoveStoredFilters)
+        {
+            configurator.filters.clear();
+            configurator.filters_shifted.clear();
+            configurator.masks.clear();
+            configurator.masks_shifted.clear();
+        }
 
-    return ok;
-    */
-   return true;
+        Serial.println("OK4");
+
+        if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            Serial.println("MCP2515 Initialized Successfully!");
+        else
+            Serial.println("Error Initializing MCP2515...");
+        _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+        return ok;
+        */
+    return false;
 }
 
 void CAN_BUS::printFilters()
@@ -335,4 +386,103 @@ void CAN_BUS::setPacketTimer(unsigned long packetID, unsigned long time)
 
     // If not found, add a new timer
     packetTimers.push_back({packetID, time});
+}
+
+//** CAN STATUS **//
+void CAN_BUS::setCANStatusData()
+{
+    int d0[2]; // runtimeTime,numErrorPaq
+    int d1[2]; // numRXPaqOK,numTXPaqOK
+    int d2[2]={0,0};
+    d0[0] = runtimeTime;
+    d0[1] = numErrorPaq / numCurrentSamples;
+    d1[0] = numRXPaqOK / numCurrentSamples;
+    d1[1] = numTXPaqOK / numCurrentSamples;
+
+    DEBUG_PRINTLN("Offset: ");
+    DEBUG_PRINTLN(statusPacketOffset);
+
+    this->setPacket(statusPacketOffset, d0);
+    this->setPacket(statusPacketOffset + 1, d1);
+    this->setPacket(statusPacketOffset + 2, d2);
+}
+
+void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[], bool &ok)
+{
+
+    int d0[2];
+    int d1[2];
+    int d2[2];
+    if (_nodeid > 0)
+    {
+        unsigned long _statusPacketOffset = STATUS_START_MASTER_ID + (_nodeid - 1) * STATUS_NUM_PAQUETS;
+        if (_nodeid != nodeID)
+        {
+            
+           DEBUG_PRINTLN((String) "ID " + _nodeid + "d0 data");
+            ok=getPacket(_statusPacketOffset, d0);
+            if (ok)
+            {
+                getPacket(_statusPacketOffset + 1, d1);
+                getPacket(_statusPacketOffset + 2, d2);
+            }
+            
+        }
+        else
+        {
+            d0[0] = runtimeTime;
+            d0[1] = numErrorPaq;
+            d1[0] = numRXPaqOK;
+            d1[1] = numTXPaqOK;
+            printArray(d0);
+            ok = true;
+        }
+    }
+    else
+    {
+        ok = false;
+    }
+    
+    _d0[0] = d0[0];
+    _d0[1] = d0[1];
+    _d1[0] = d1[0];
+    _d1[1] = d1[1];
+    _d2[0] = d2[0];
+    _d2[1] = d2[0];
+}
+bool CAN_BUS::getCANStatusData(unsigned _nodeid, int d[])
+{
+    bool ok;
+    int d0[2]; // runtimeTime,numErrorPaq
+    int d1[2]; // numRXPaqOK,numTXPaqOK
+    int d2[2];
+    getCANStatusData(_nodeid, d0, d1, d2, ok);
+    d[0] = d0[0];
+    d[1] = d0[1];
+    d[2] = d1[0];
+    d[3] = d1[1];
+    d[4] = d2[0];
+    d[5] = d2[1];
+    return ok;
+}
+
+void CAN_BUS::printStatusData(unsigned _nodeID)
+{
+    bool ok;
+    int d0[2]; // runtimeTime,numErrorPaq
+    int d1[2]; // numRXPaqOK,numTXPaqOK
+    int d2[2];
+    getCANStatusData(_nodeID, d0, d1, d2, ok);
+    if (!ok)
+    {
+       // Serial.println((String) "Status data for nodeId: " + _nodeID + "not found");
+    }
+    else
+    {
+        Serial.println((String) "NodeId: " + _nodeID + " data:");
+        Serial.println((String) "runtimeTime: " + d0[0]);
+        Serial.println((String) "numErrorPaq: " + d0[1]);
+        Serial.println((String) "numRXPaqOK: " + d1[0]);
+        Serial.println((String) "numTXPaqOK: " + d1[1]);
+    }
 }

@@ -119,7 +119,7 @@ public:
             for (size_t j = 0; j < filters[i].size(); ++j)
             {
                 Serial.print("Filter ");
-                Serial.print(i);
+                Serial.print(j);
                 Serial.print(": 0x");
                 Serial.println(filters_shifted[i][j], HEX);
                 filterIndex++;
