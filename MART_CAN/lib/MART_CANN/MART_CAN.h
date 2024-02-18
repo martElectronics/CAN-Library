@@ -25,6 +25,7 @@ public:
         bool autoRemoveRRFPacket;     // Automaticaly delete a received rrf when the requested data is sent
         bool simulating;              // Set to true for testing when no MCP2515 are connected to the microcontroller
         bool autoRemoveStoredFilters; // Removes the stored masks and filters when applied to the MCP2515 registers to save memory
+        bool sendStatusData;          //Send status data such as runtime time, number of sent, received and collided paquets.
     } config;
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
@@ -41,6 +42,43 @@ public:
         config.autoRemoveRRFPacket = true;
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
+        config.sendStatusData=false;
+    }
+
+    // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
+    CAN_BUS(int pinCs,int _nodeID) : _CAN(pinCs)
+    {   
+        if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            Serial.println("MCP2515 Initialized Successfully!");
+        else
+            Serial.println("Error Initializing MCP2515...");
+        _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+
+        // Default configuration
+        config.respondToRRF = true;
+        config.autoRemoveRRFPacket = true;
+        config.simulating = false;
+        config.autoRemoveStoredFilters = true;
+        config.sendStatusData=true;
+        config.sendStatusData=true;
+
+        // unsigned long int rIDS[STATUS_NUM_IDS];
+        // for(unsigned long i=0;i<STATUS_NUM_IDS;i++)
+        // {
+        //     rIDS[i]=STATUS_START_MASTER_ID+i;
+        // }
+        // DataIN.setRemovableIds(rIDS,STATUS_NUM_IDS);
+
+        statusPacketOffset=STATUS_START_MASTER_ID+(_nodeID-1)*STATUS_NUM_PAQUETS;
+        for(unsigned i=0;i<STATUS_NUM_PAQUETS;i++)
+        {
+            setPacketTimer(statusPacketOffset+i,STATUS_DATA_TIME_CALC);
+           
+        }
+        previousStatusIntervalTime=millis();
+        previousStatusRuntimeTime=millis();
+        intervalTime=STATUS_DATA_TIME_CALC;
+        nodeID=_nodeID;
     }
 
     // Destructor
@@ -81,7 +119,7 @@ public:
             else
             {
                 ERROR_PRINTLN("Error: No matching packet found.");
-                ok = true;
+                ok = false;
             }
         }
         return (ok || config.simulating);
@@ -209,6 +247,10 @@ public:
     void testFilters(const std::vector<uint16_t> &testIds);
 
     void setPacketTimer(unsigned long packetID, unsigned long time);
+    void printStatusData(unsigned _nodeID);
+
+    //** CAN STATUS DATA**//
+    bool getCANStatusData(unsigned _nodeid, int d[]);
 
 private:
     struct RRFIds
@@ -225,6 +267,12 @@ private:
 
     std::vector<RRFIds> rrfIdsList; // Vector holding INRRFid and OUTRRFid vectors
     MCP2515Configurator configurator;
+
+    //** CAN BUS STATUS DATA **//
+    unsigned nodeID,statusPacketOffset; //IDs
+    unsigned runtimeTime,numRXPaqOK,numTXPaqOK,numErrorPaq; //Actual data
+    unsigned previousStatusIntervalTime,previousStatusRuntimeTime,intervalTime,numCurrentSamples; //Aux data
+
 
     bool readBytes();
     bool writeBytes();
@@ -453,6 +501,11 @@ private:
         size_t offset = 0;
         unpackCANMessage(inputArray, offset, args...);
     }
+
+    //** CAN STATUS **//
+    void setCANStatusData();
+    void getCANStatusData(unsigned _nodeid, int d0[], int d1[], int d2[],bool &ok);
+
 };
 
 #endif

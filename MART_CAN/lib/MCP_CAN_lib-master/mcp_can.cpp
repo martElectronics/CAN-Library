@@ -23,6 +23,7 @@
 */
 #include "mcp_can.h"
 
+
 #define spi_readwrite mcpSPI->transfer
 #define spi_read() spi_readwrite(0x00)
 
@@ -857,6 +858,7 @@ INT8U MCP_CAN::begin(INT8U idmodeset, INT8U speedset, INT8U clockset)
 
     return CAN_FAILINIT;
 }
+
 
 /*********************************************************************************************************
 ** Function name:           init_Mask
