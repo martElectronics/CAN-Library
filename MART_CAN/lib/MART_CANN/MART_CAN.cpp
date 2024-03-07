@@ -72,8 +72,11 @@ bool CAN_BUS::writeBytes()
 bool CAN_BUS::send()
 {
     bool success = true;
+
     unsigned long currentTime = millis();
-    if ((millis() - previousStatusIntervalTime) >= (intervalTime / 3))
+
+    //Send status data if the timer reaches PT and the ESP is configured accordingly
+    if (((millis() - previousStatusIntervalTime) >= (intervalTime / 3)) && (config.sendStatusData))
     {
         numCurrentSamples++;
         setCANStatusData();
@@ -219,8 +222,11 @@ void CAN_BUS::receive()
     previousStatusRuntimeTime = millis();
     if (readBytes() || config.simulating)
     {
-        DataIN.addPacket(DataIN.dataRaw);
-        // Serial.println((String) "Rx ID: " + DataIN.dataRaw.id);
+        //Store packet in memory if is not in the IDs set by the filter or if are no ids stored
+        if ((filterIDs.empty())||(std::binary_search(filterIDs.begin(), filterIDs.end(), DataIN.dataRaw.id)))
+            DataIN.addPacket(DataIN.dataRaw);
+            
+         DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
         {
@@ -230,7 +236,6 @@ void CAN_BUS::receive()
             if (config.autoRemoveRRFPacket)
             {
                 DataIN.removePacket(DataIN.dataRaw.id);
-                // Serial.println("Remove");
             }
         }
         numRXPaqOK++;
@@ -301,65 +306,14 @@ bool CAN_BUS::searchOutId(unsigned long outId)
 }
 
 // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
-bool CAN_BUS::setFilters(const std::vector<uint16_t> &ids)
+bool CAN_BUS::setFilters(const unsigned long ids[], unsigned size)
 {
-    /*
-        if (_CAN.begin(MCP_STDEXT, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-            Serial.print("MCP2515 Init Okay!!\r\n");
-        else
-            Serial.print("MCP2515 Init Failed!!\r\n");
-        bool ok;
-
-        ok = configurator.calculateFiltersAndMasks(ids);
-        Serial.println("OK1");
-        if (ok)
-        {
-            // Shifts the calculated values so a leading 0 is placed.
-            configurator.shiftValues(0);
-            if (DEBUG_MODE)
-            {
-                printFilters();
-            }
-            int filterIndex = 0;
-
-            for (size_t i = 0; i < configurator.masks.size(); ++i)
-            {
-
-                Serial.println("OK2");
-                _CAN.init_Mask(i, 0, configurator.masks[i]); // Initialize mask
-
-                Serial.println("OK3");
-                // Initialize filters associated with this mask
-                for (size_t j = 0; j < configurator.filters[i].size(); ++j)
-                {
-                    //  _CAN.init_Filt(filterIndex++, 0, configurator.filters[i][j]);
-                }
-            }
-        }
-        else
-        {
-            DEBUG_PRINTLN("Too many filters created");
-        }
-
-        // Delete the saved masks and filters to save memory
-        if (config.autoRemoveStoredFilters)
-        {
-            configurator.filters.clear();
-            configurator.filters_shifted.clear();
-            configurator.masks.clear();
-            configurator.masks_shifted.clear();
-        }
-
-        Serial.println("OK4");
-
-        if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-            Serial.println("MCP2515 Initialized Successfully!");
-        else
-            Serial.println("Error Initializing MCP2515...");
-        _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        return ok;
-        */
-    return false;
+    for (int i = 0; i < size; i++)
+    {
+        filterIDs.push_back(ids[i]);
+    }
+    sort(filterIDs.begin(), filterIDs.end());
+    return true;
 }
 
 void CAN_BUS::printFilters()
@@ -393,7 +347,7 @@ void CAN_BUS::setCANStatusData()
 {
     int d0[2]; // runtimeTime,numErrorPaq
     int d1[2]; // numRXPaqOK,numTXPaqOK
-    int d2[2]={0,0};
+    int d2[2] = {0, 0};
     d0[0] = runtimeTime;
     d0[1] = numErrorPaq / numCurrentSamples;
     d1[0] = numRXPaqOK / numCurrentSamples;
@@ -418,15 +372,14 @@ void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[]
         unsigned long _statusPacketOffset = STATUS_START_MASTER_ID + (_nodeid - 1) * STATUS_NUM_PAQUETS;
         if (_nodeid != nodeID)
         {
-            
-           DEBUG_PRINTLN((String) "ID " + _nodeid + "d0 data");
-            ok=getPacket(_statusPacketOffset, d0);
+
+            DEBUG_PRINTLN((String) "ID " + _nodeid + "d0 data");
+            ok = getPacket(_statusPacketOffset, d0);
             if (ok)
             {
                 getPacket(_statusPacketOffset + 1, d1);
                 getPacket(_statusPacketOffset + 2, d2);
             }
-            
         }
         else
         {
@@ -442,7 +395,7 @@ void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[]
     {
         ok = false;
     }
-    
+
     _d0[0] = d0[0];
     _d0[1] = d0[1];
     _d1[0] = d1[0];
@@ -475,7 +428,7 @@ void CAN_BUS::printStatusData(unsigned _nodeID)
     getCANStatusData(_nodeID, d0, d1, d2, ok);
     if (!ok)
     {
-       // Serial.println((String) "Status data for nodeId: " + _nodeID + "not found");
+        // Serial.println((String) "Status data for nodeId: " + _nodeID + "not found");
     }
     else
     {
@@ -485,4 +438,8 @@ void CAN_BUS::printStatusData(unsigned _nodeID)
         Serial.println((String) "numRXPaqOK: " + d1[0]);
         Serial.println((String) "numTXPaqOK: " + d1[1]);
     }
+}
+void CAN_BUS::printReceivedIds()
+{
+    DataIN.printAllPacketsIDs();
 }

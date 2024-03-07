@@ -59,8 +59,8 @@ public:
         config.autoRemoveRRFPacket = true;
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
-        config.sendStatusData=true;
-        config.sendStatusData=true;
+        config.sendStatusData=false;
+        
 
         // unsigned long int rIDS[STATUS_NUM_IDS];
         // for(unsigned long i=0;i<STATUS_NUM_IDS;i++)
@@ -69,11 +69,15 @@ public:
         // }
         // DataIN.setRemovableIds(rIDS,STATUS_NUM_IDS);
 
+        
         statusPacketOffset=STATUS_START_MASTER_ID+(_nodeID-1)*STATUS_NUM_PAQUETS;
         for(unsigned i=0;i<STATUS_NUM_PAQUETS;i++)
         {
+            //Sets CANStatusPackets timer
             setPacketTimer(statusPacketOffset+i,STATUS_DATA_TIME_CALC);
-           
+
+            //Store the CANStatusPackets ID's in filterIDs so they can be read by the other ESP's
+            filterIDs.push_back(statusPacketOffset+i);
         }
         previousStatusIntervalTime=millis();
         previousStatusRuntimeTime=millis();
@@ -238,7 +242,7 @@ public:
     void setRRFId(unsigned long inId, unsigned long outId);
 
     // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
-    bool setFilters(const std::vector<uint16_t> &ids);
+    bool setFilters(const unsigned long ids[],unsigned size);
 
     // Prints the calculated masks and filters
     void printFilters();
@@ -248,6 +252,7 @@ public:
 
     void setPacketTimer(unsigned long packetID, unsigned long time);
     void printStatusData(unsigned _nodeID);
+    void printReceivedIds();
 
     //** CAN STATUS DATA**//
     bool getCANStatusData(unsigned _nodeid, int d[]);
@@ -266,6 +271,7 @@ private:
     std::vector<PacketTimer> packetTimers;
 
     std::vector<RRFIds> rrfIdsList; // Vector holding INRRFid and OUTRRFid vectors
+    std::vector<unsigned long> filterIDs; // Vector holding INRRFid and OUTRRFid vectors
     MCP2515Configurator configurator;
 
     //** CAN BUS STATUS DATA **//
