@@ -1,37 +1,43 @@
-//Ejemplo de uso de la función millis() como alternativa a delay() para las rutinas que requieran de una temporización
-//millis() es una función que devuelve el tiempo en milisegundos que ha transcurrido desde que se ha
-//iniciado el microcontrolador.
-
-//Parpadeo de un led para que esté 2 segundos encendido y 1 segundo apagado
 
 #include <Arduino.h>
+#include <MART_CAN.h>
 
-unsigned long tiempoAnterior;
-unsigned tiempoON=2000, tiempoOFF=1000;
-bool estadoLed;
-unsigned pinLed=16;
+CAN_BUS CAN(5,1);
+int dataInt1[1];
+int dataInt11[1]={666};
+int dataInt2[2];
+int delayData[2];
+int cont=0;
+
+unsigned long int firstId=7;
+unsigned long int lastId=900;
+unsigned long int numIds=10;
+
 void setup()
 {
-  pinMode(pinLed,OUTPUT);
-  tiempoAnterior=millis();
-  
+    Serial.begin(115200);
 }
 
 void loop()
 {
-  if(((millis()-tiempoAnterior)>=tiempoON) && estadoLed)
-  {
-    estadoLed=true;
-    tiempoAnterior=millis();
-  }
-  if(((millis()-tiempoAnterior)>=tiempoOFF) && !estadoLed)
-  {
-    estadoLed=false;
-    tiempoAnterior=millis();
-  }
+    unsigned long int timeAux=millis();
+     unsigned numIds = map(analogRead(14),0,4095,0,1000);
+    dataInt2[0]=cont;
+    
+    CAN.receive();
+   
+    CAN.setPacket(firstId,dataInt2);
+    
+    delay(numIds);
+    CAN.send();
+ 
+   // CAN.printStatusData(1);
 
-  digitalWrite(pinLed,estadoLed);
+    // cont++;
+
 }
 
-
-
+/*   dataInt2[0]=cont;
+    dataInt2[1]=potValue;
+    dataInt1[0]=cont;
+    cont++;*/

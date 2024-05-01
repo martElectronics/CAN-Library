@@ -70,15 +70,15 @@ public:
         // DataIN.setRemovableIds(rIDS,STATUS_NUM_IDS);
 
         
-        statusPacketOffset=STATUS_START_MASTER_ID+(_nodeID-1)*STATUS_NUM_PAQUETS;
-        for(unsigned i=0;i<STATUS_NUM_PAQUETS;i++)
-        {
-            //Sets CANStatusPackets timer
-            setPacketTimer(statusPacketOffset+i,STATUS_DATA_TIME_CALC);
+        // statusPacketOffset=STATUS_START_MASTER_ID+(_nodeID-1)*STATUS_NUM_PAQUETS;
+        // for(unsigned i=0;i<STATUS_NUM_PAQUETS;i++)
+        // {
+        //     //Sets CANStatusPackets timer
+        //     setPacketTimer(statusPacketOffset+i,STATUS_DATA_TIME_CALC);
 
-            //Store the CANStatusPackets ID's in filterIDs so they can be read by the other ESP's
-            filterIDs.push_back(statusPacketOffset+i);
-        }
+        //     //Store the CANStatusPackets ID's in filterIDs so they can be read by the other ESP's
+        //     filterIDs.push_back(statusPacketOffset+i);
+        // }
         previousStatusIntervalTime=millis();
         previousStatusRuntimeTime=millis();
         intervalTime=STATUS_DATA_TIME_CALC;

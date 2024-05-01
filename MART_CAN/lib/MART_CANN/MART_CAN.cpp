@@ -224,7 +224,11 @@ void CAN_BUS::receive()
     {
         //Store packet in memory if is not in the IDs set by the filter or if are no ids stored
         if ((filterIDs.empty())||(std::binary_search(filterIDs.begin(), filterIDs.end(), DataIN.dataRaw.id)))
+        {
+            //Serial.println("ADDED");
             DataIN.addPacket(DataIN.dataRaw);
+        }
+            
             
          DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
