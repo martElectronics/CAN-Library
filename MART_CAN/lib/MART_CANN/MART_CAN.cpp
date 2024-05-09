@@ -84,10 +84,10 @@ bool CAN_BUS::send()
 
         if (numCurrentSamples > 3)
         {
-            numRXPaqOK = 0;
-            numTXPaqOK = 0;
-            numErrorPaq = 0;
-            numCurrentSamples = 1;
+            // numRXPaqOK = 0;
+            // numTXPaqOK = 0;
+            // numTxPaqError = 0;
+            // numCurrentSamples = 1;
         }
     }
 
@@ -126,7 +126,7 @@ bool CAN_BUS::send()
             if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
-                numErrorPaq++;
+                numTxPaqError++;
             } else {
               DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
                 packet.id=idAux;
@@ -228,8 +228,7 @@ void CAN_BUS::receive()
             //Serial.println("ADDED");
             DataIN.addPacket(DataIN.dataRaw);
         }
-            
-            
+
          DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
@@ -349,11 +348,11 @@ void CAN_BUS::setPacketTimer(unsigned long packetID, unsigned long time)
 //** CAN STATUS **//
 void CAN_BUS::setCANStatusData()
 {
-    int d0[2]; // runtimeTime,numErrorPaq
+    int d0[2]; // runtimeTime,numTxPaqError
     int d1[2]; // numRXPaqOK,numTXPaqOK
     int d2[2] = {0, 0};
     d0[0] = runtimeTime;
-    d0[1] = numErrorPaq / numCurrentSamples;
+    d0[1] = numTxPaqError / numCurrentSamples;
     d1[0] = numRXPaqOK / numCurrentSamples;
     d1[1] = numTXPaqOK / numCurrentSamples;
 
@@ -388,7 +387,7 @@ void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[]
         else
         {
             d0[0] = runtimeTime;
-            d0[1] = numErrorPaq;
+            d0[1] = numTxPaqError;
             d1[0] = numRXPaqOK;
             d1[1] = numTXPaqOK;
             printArray(d0);
@@ -410,7 +409,7 @@ void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[]
 bool CAN_BUS::getCANStatusData(unsigned _nodeid, int d[])
 {
     bool ok;
-    int d0[2]; // runtimeTime,numErrorPaq
+    int d0[2]; // runtimeTime,numTxPaqError
     int d1[2]; // numRXPaqOK,numTXPaqOK
     int d2[2];
     getCANStatusData(_nodeid, d0, d1, d2, ok);
@@ -426,7 +425,7 @@ bool CAN_BUS::getCANStatusData(unsigned _nodeid, int d[])
 void CAN_BUS::printStatusData(unsigned _nodeID)
 {
     bool ok;
-    int d0[2]; // runtimeTime,numErrorPaq
+    int d0[2]; // runtimeTime,numTxPaqError
     int d1[2]; // numRXPaqOK,numTXPaqOK
     int d2[2];
     getCANStatusData(_nodeID, d0, d1, d2, ok);
@@ -438,7 +437,7 @@ void CAN_BUS::printStatusData(unsigned _nodeID)
     {
         Serial.println((String) "NodeId: " + _nodeID + " data:");
         Serial.println((String) "runtimeTime: " + d0[0]);
-        Serial.println((String) "numErrorPaq: " + d0[1]);
+        Serial.println((String) "numTxPaqError: " + d0[1]);
         Serial.println((String) "numRXPaqOK: " + d1[0]);
         Serial.println((String) "numTXPaqOK: " + d1[1]);
     }

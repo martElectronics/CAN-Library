@@ -257,6 +257,11 @@ public:
     //** CAN STATUS DATA**//
     bool getCANStatusData(unsigned _nodeid, int d[]);
 
+    //** CAN BUS STATUS DATA **//
+    unsigned nodeID,statusPacketOffset; //IDs
+    unsigned runtimeTime,numRXPaqOK,numTXPaqOK,numTxPaqError; //Actual data
+    unsigned previousStatusIntervalTime,previousStatusRuntimeTime,intervalTime,numCurrentSamples; //Aux data
+
 private:
     struct RRFIds
     {
@@ -274,10 +279,7 @@ private:
     std::vector<unsigned long> filterIDs; // Vector holding INRRFid and OUTRRFid vectors
     MCP2515Configurator configurator;
 
-    //** CAN BUS STATUS DATA **//
-    unsigned nodeID,statusPacketOffset; //IDs
-    unsigned runtimeTime,numRXPaqOK,numTXPaqOK,numErrorPaq; //Actual data
-    unsigned previousStatusIntervalTime,previousStatusRuntimeTime,intervalTime,numCurrentSamples; //Aux data
+    
 
 
     bool readBytes();
