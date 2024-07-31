@@ -4,7 +4,8 @@
 #include <Arduino.h>
 
 // Uncomment the following line to enable debugging
-
+// #define DEBUG
+// #define ERROR_LOGGING
 
 // #define DEBUG
 

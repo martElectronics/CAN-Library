@@ -114,7 +114,7 @@ bool CAN_BUS::send()
             byte buf[8];
             // Copy data to buffer
             std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
-
+           // this->printByteArray(buf, 8);
             if(packet.rrf)
             {
             unsigned long mask = 1UL << 30;
@@ -124,6 +124,7 @@ bool CAN_BUS::send()
             }
             // Attempt to send the packet
             if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
+              //  this->printByteArray(buf,8);
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
                 numTxPaqError++;
