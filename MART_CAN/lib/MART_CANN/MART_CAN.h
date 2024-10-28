@@ -19,6 +19,7 @@ public:
     // CONVERTER converter;
     MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
+    bool mcpInitOK=false;
 
     struct Config
     {
@@ -49,6 +50,7 @@ public:
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
     CAN_BUS(int pinCs, int _nodeID) : _CAN(pinCs)
     {
+       
         if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
             Serial.println("MCP2515 Initialized Successfully!");
         else
@@ -88,16 +90,50 @@ public:
     }
     CAN_BUS(int pinCs, int _nodeID, int kbps) : _CAN(pinCs)
     {
-        if (kbps == 1000)
+        if (kbps == 250)
         {
-            if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-                Serial.println("MCP2515 Initialized Successfully!");
+            if (_CAN.begin(MCP_ANY, CAN_250KBPS, MCP_8MHZ) == CAN_OK)
+            {
+                mcpInitOK=true;
+            }
+               // Serial.println("MCP2515 Initialized Successfully! 250kbps");
+            else
+                Serial.println("Error Initializing MCP2515...");
+            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+        }
+        if (kbps == 125)
+        {
+            if (_CAN.begin(MCP_ANY, CAN_125KBPS, MCP_8MHZ) == CAN_OK)
+            {
+                mcpInitOK=true;
+            }
+               // Serial.println("MCP2515 Initialized Successfully! 250kbps");
+            else
+                Serial.println("Error Initializing MCP2515...");
+            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+        }
+         if (kbps == 500)
+        {
+            if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
+            {
+                mcpInitOK=true;
+            }
+               // Serial.println("MCP2515 Initialized Successfully! 250kbps");
             else
                 Serial.println("Error Initializing MCP2515...");
             _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }
         else
         {
+            if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            {
+                Serial.println("MCP2515 Initialized Successfully!");
+                mcpInitOK=true;
+            }
+                
+            else
+                Serial.println("Error Initializing MCP2515...");
+            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }
 
         // Default configuration
@@ -196,7 +232,18 @@ public:
             (..., (offset = packArgument(std::forward<Args>(args), outputArray, offset)));
             DataOUT.dataRaw.id = canId;
 
-            DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
+            //DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
+            if(canId>0x7FF)
+            {
+                DataOUT.dataRaw.typeExtendedId=1;
+            }
+            else
+            {
+                DataOUT.dataRaw.typeExtendedId=0;
+            }
+      
+            //Serial.println((String)DataOUT.dataRaw.id+" " +DataOUT.dataRaw.typeExtendedId);
+
             DataOUT.dataRaw.rrf = false;
             // Checks if there is a RRF rule stored involving that packet. If so, make
             // WaitForRRF true so send() doesn't send that package unless a rrf is received

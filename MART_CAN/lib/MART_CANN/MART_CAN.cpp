@@ -15,10 +15,10 @@ bool CAN_BUS::readBytes()
     {
         byte rxBuf[8];
         _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
-        if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
-            DataIN.dataRaw.typeExtendedId = true;
+        if ((DataIN.dataRaw.id>0x7FF))
+            DataIN.dataRaw.typeExtendedId = 1;
         else
-            DataIN.dataRaw.typeExtendedId = false;
+            DataIN.dataRaw.typeExtendedId = 0;
 
         if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
         {
@@ -230,10 +230,10 @@ void CAN_BUS::receive()
             DataIN.addPacket(DataIN.dataRaw);
         }
 
-         DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
+         //Serial.println((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
-        {
+        {      
 
             // Serial.println("Sending requested paquets of rrf");
             sendRequestedRRF(DataIN.dataRaw.id);
