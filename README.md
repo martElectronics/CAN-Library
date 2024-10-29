@@ -1,4 +1,4 @@
-# can-library
+# CAN_Library
 MART CAN Library
 
 The MART_CAN library is an Arduino library designed to facilitate CAN (Controller Area Network) communication and data packet storage. It simplifies the process of sending and receiving CAN messages, as well as handling different data types in your Arduino projects.
