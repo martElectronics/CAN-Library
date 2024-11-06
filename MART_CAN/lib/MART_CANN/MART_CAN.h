@@ -45,6 +45,8 @@ public:
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
         config.sendStatusData = false;
+
+        fallo simulado
     }
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
