@@ -87,6 +87,8 @@ public:
         previousStatusRuntimeTime = millis();
         intervalTime = STATUS_DATA_TIME_CALC;
         nodeID = _nodeID;
+
+        falloSimulado
     }
     CAN_BUS(int pinCs, int _nodeID, int kbps) : _CAN(pinCs)
     {
