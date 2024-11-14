@@ -50,6 +50,11 @@ void loop()
    CAN.printArray(dataInt2);
    CAN.printArray(dataBool16);
 
+
+   //Test receive byteArray
+   byte byteArray[8];
+   CAN.getPacket((unsigned long)0x12, byteArray);
+
 }
 
     

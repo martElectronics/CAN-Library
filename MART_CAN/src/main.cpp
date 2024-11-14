@@ -1,36 +1,60 @@
-//Ejemplo de uso de la función millis() como alternativa a delay() para las rutinas que requieran de una temporización
-//millis() es una función que devuelve el tiempo en milisegundos que ha transcurrido desde que se ha
-//iniciado el microcontrolador.
-
-//Parpadeo de un led para que esté 2 segundos encendido y 1 segundo apagado
 
 #include <Arduino.h>
+#include <MART_CAN.h>
 
-unsigned long tiempoAnterior;
-unsigned tiempoON=2000, tiempoOFF=1000;
-bool estadoLed;
-unsigned pinLed=16;
+
+CAN_BUS CAN(5);
+
+
+unsigned long removeableIDs[2]={101,103};
 void setup()
 {
-  pinMode(pinLed,OUTPUT);
-  tiempoAnterior=millis();
+   Serial.begin(9600);
+   //Add to don't store permanently any packet in memory
+   //CAN.DataIN.addRemovableIds()
+   //Add to don't store permanently any packet whose id is in the removeableIDs array
+   //CAN.DataIN.addRemovableIds(removeableIDs,2)
 }
 
 void loop()
 {
-  if(((millis()-tiempoAnterior)>=tiempoON) && estadoLed)
-  {
-    estadoLed=true;
-    tiempoAnterior=millis();
-  }
-  if(((millis()-tiempoAnterior)>=tiempoOFF) && !estadoLed)
-  {
-    estadoLed=false;
-    tiempoAnterior=millis();
-  }
+   
+   bool dataBool16[16];
+   short dataShort1[1],dataShort2[2];
+   int dataInt1[1],dataInt2[2];
+   float dataFloat1[1];
 
-  digitalWrite(pinLed,estadoLed);
+   //Se leen los datos del bus y se guardan en memoria (DataIN)
+   CAN.receive();
+   //Se procesan los primeros 4 bytes del paquete con ID=100 como "int" y se guardan en dataInt1
+   CAN.getPacket(100, dataInt1); 
+
+   //Se procesan los 8 bytes del paquete con ID=101 como "int" (de 4 en 4) y se guardan en dataInt2 
+   CAN.getPacket(101, dataInt2); 
+
+   //Se procesan los primeros 4 bytes del paquete con ID=102 como "short"(de 2 en 2) y se guardan en dataShort2
+   //Los restantes se procesan como "int" y se guardan en dataInt1
+   CAN.getPacket(102, dataShort2, dataInt1); 
+
+   //Se procesan los primeros 2 bytes del paquete con ID=200 como "bool"(de bit en bit) y se guardan en dataBool16
+   //Los 4 bytes siguientes se procesan como "float" y los dos últimos como "short" 
+   CAN.getPacket(200, dataBool16, dataFloat1,dataShort1);
+
+   //getPacket devuelve "false" si se intentan leer más de 8 bytes o si el paquete con la ID buscada no existe
+   if(!CAN.getPacket(200, dataBool16, dataFloat1,dataShort1,dataInt1))
+   {
+      Serial.println("Error. Se están intentando leer más de 8 bytes");
+   }
+
+   //Muestra la información almacenada en los arrays por pantalla
+   CAN.printArray(dataInt2);
+   CAN.printArray(dataBool16);
+
+
+   //Test receive byteArray
+   byte byteArray[8];
+   CAN.getPacket((unsigned long)0x12, byteArray);
+
 }
 
-
-
+    
