@@ -14,7 +14,7 @@ void setup()
 {
   pinMode(pinLed,OUTPUT);
   tiempoAnterior=millis();
-  
+  //o
 }
 
 void loop()
