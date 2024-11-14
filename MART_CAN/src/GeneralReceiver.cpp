@@ -10,14 +10,10 @@ unsigned long removeableIDs[2]={101,103};
 void setup()
 {
    Serial.begin(9600);
-
-   //Los únicos mensajes que se recibirán serán aquellos cuyas IDs estén configuradas con setFilters();
-   unsigned long configIDs[4]={2,3,0x103,0xF8};
-   if(CAN.setFilters(configIDs,4))
-   {
-      Serial.println("Filtros aplicados correctamente");
-   }
-
+   //Add to don't store permanently any packet in memory
+   //CAN.DataIN.addRemovableIds()
+   //Add to don't store permanently any packet whose id is in the removeableIDs array
+   //CAN.DataIN.addRemovableIds(removeableIDs,2)
 }
 
 void loop()
@@ -53,7 +49,6 @@ void loop()
    //Muestra la información almacenada en los arrays por pantalla
    CAN.printArray(dataInt2);
    CAN.printArray(dataBool16);
-
 
 }
 

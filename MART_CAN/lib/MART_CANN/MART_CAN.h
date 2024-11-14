@@ -6,7 +6,6 @@
 #include <bitset>
 #include <cstring>
 #include <optional>
-#include <EEPROM.h>
 #include "mcp_can.h"
 #include "CAN_DATA.h"
 #include "common.h"
@@ -19,7 +18,6 @@ public:
     // CONVERTER converter;
     MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
-    bool mcpInitOK=false;
 
     struct Config
     {
@@ -27,12 +25,12 @@ public:
         bool autoRemoveRRFPacket;     // Automaticaly delete a received rrf when the requested data is sent
         bool simulating;              // Set to true for testing when no MCP2515 are connected to the microcontroller
         bool autoRemoveStoredFilters; // Removes the stored masks and filters when applied to the MCP2515 registers to save memory
-        bool sendStatusData;          // Send status data such as runtime time, number of sent, received and collided paquets.
+        bool sendStatusData;          //Send status data such as runtime time, number of sent, received and collided paquets.
     } config;
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
     CAN_BUS(int pinCs) : _CAN(pinCs)
-    {
+    {   
         if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
             Serial.println("MCP2515 Initialized Successfully!");
         else
@@ -44,14 +42,12 @@ public:
         config.autoRemoveRRFPacket = true;
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
-        config.sendStatusData = false;
-
+        config.sendStatusData=false;
     }
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
-    CAN_BUS(int pinCs, int _nodeID) : _CAN(pinCs)
-    {
-       
+    CAN_BUS(int pinCs,int _nodeID) : _CAN(pinCs)
+    {   
         if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
             Serial.println("MCP2515 Initialized Successfully!");
         else
@@ -63,10 +59,8 @@ public:
         config.autoRemoveRRFPacket = true;
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
-        config.sendStatusData = false;
-
-        // EEPROM.begin(100);
-        // EEPROM.writeUInt(eepromAddressCount,_nodeID);
+        config.sendStatusData=false;
+        
 
         // unsigned long int rIDS[STATUS_NUM_IDS];
         // for(unsigned long i=0;i<STATUS_NUM_IDS;i++)
@@ -75,6 +69,7 @@ public:
         // }
         // DataIN.setRemovableIds(rIDS,STATUS_NUM_IDS);
 
+        
         // statusPacketOffset=STATUS_START_MASTER_ID+(_nodeID-1)*STATUS_NUM_PAQUETS;
         // for(unsigned i=0;i<STATUS_NUM_PAQUETS;i++)
         // {
@@ -84,71 +79,10 @@ public:
         //     //Store the CANStatusPackets ID's in filterIDs so they can be read by the other ESP's
         //     filterIDs.push_back(statusPacketOffset+i);
         // }
-        previousStatusIntervalTime = millis();
-        previousStatusRuntimeTime = millis();
-        intervalTime = STATUS_DATA_TIME_CALC;
-        nodeID = _nodeID;
-
-    }
-    CAN_BUS(int pinCs, int _nodeID, int kbps) : _CAN(pinCs)
-    {
-        if (kbps == 250)
-        {
-            if (_CAN.begin(MCP_ANY, CAN_250KBPS, MCP_8MHZ) == CAN_OK)
-            {
-                mcpInitOK=true;
-            }
-               // Serial.println("MCP2515 Initialized Successfully! 250kbps");
-            else
-                Serial.println("Error Initializing MCP2515...");
-            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        }
-        if (kbps == 125)
-        {
-            if (_CAN.begin(MCP_ANY, CAN_125KBPS, MCP_8MHZ) == CAN_OK)
-            {
-                mcpInitOK=true;
-            }
-               // Serial.println("MCP2515 Initialized Successfully! 250kbps");
-            else
-                Serial.println("Error Initializing MCP2515...");
-            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        }
-         if (kbps == 500)
-        {
-            if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
-            {
-                mcpInitOK=true;
-            }
-               // Serial.println("MCP2515 Initialized Successfully! 250kbps");
-            else
-                Serial.println("Error Initializing MCP2515...");
-            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        }
-        else
-        {
-            if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-            {
-                Serial.println("MCP2515 Initialized Successfully!");
-                mcpInitOK=true;
-            }
-                
-            else
-                Serial.println("Error Initializing MCP2515...");
-            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        }
-
-        // Default configuration
-        config.respondToRRF = true;
-        config.autoRemoveRRFPacket = true;
-        config.simulating = false;
-        config.autoRemoveStoredFilters = true;
-        config.sendStatusData = false;
-
-        previousStatusIntervalTime = millis();
-        previousStatusRuntimeTime = millis();
-        intervalTime = STATUS_DATA_TIME_CALC;
-        nodeID = _nodeID;
+        previousStatusIntervalTime=millis();
+        previousStatusRuntimeTime=millis();
+        intervalTime=STATUS_DATA_TIME_CALC;
+        nodeID=_nodeID;
     }
 
     // Destructor
@@ -222,7 +156,7 @@ public:
         if (size > 64)
         {
             ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >8");
-            ok = false;
+            ok=false;
         }
         else
         {
@@ -234,18 +168,7 @@ public:
             (..., (offset = packArgument(std::forward<Args>(args), outputArray, offset)));
             DataOUT.dataRaw.id = canId;
 
-            //DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
-            if(canId>0x7FF)
-            {
-                DataOUT.dataRaw.typeExtendedId=1;
-            }
-            else
-            {
-                DataOUT.dataRaw.typeExtendedId=0;
-            }
-      
-            //Serial.println((String)DataOUT.dataRaw.id+" " +DataOUT.dataRaw.typeExtendedId);
-
+            DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
             DataOUT.dataRaw.rrf = false;
             // Checks if there is a RRF rule stored involving that packet. If so, make
             // WaitForRRF true so send() doesn't send that package unless a rrf is received
@@ -319,7 +242,7 @@ public:
     void setRRFId(unsigned long inId, unsigned long outId);
 
     // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
-    bool setFilters(const unsigned long ids[], unsigned size);
+    bool setFilters(const unsigned long ids[],unsigned size);
 
     // Prints the calculated masks and filters
     void printFilters();
@@ -335,9 +258,9 @@ public:
     bool getCANStatusData(unsigned _nodeid, int d[]);
 
     //** CAN BUS STATUS DATA **//
-    unsigned nodeID, statusPacketOffset;                                                             // IDs
-    unsigned runtimeTime, numRXPaqOK, numTXPaqOK, numTxPaqError;                                     // Actual data
-    unsigned previousStatusIntervalTime, previousStatusRuntimeTime, intervalTime, numCurrentSamples; // Aux data
+    unsigned nodeID,statusPacketOffset; //IDs
+    unsigned runtimeTime,numRXPaqOK,numTXPaqOK,numTxPaqError; //Actual data
+    unsigned previousStatusIntervalTime,previousStatusRuntimeTime,intervalTime,numCurrentSamples; //Aux data
 
 private:
     struct RRFIds
@@ -352,12 +275,12 @@ private:
     };
     std::vector<PacketTimer> packetTimers;
 
-    std::vector<RRFIds> rrfIdsList;       // Vector holding INRRFid and OUTRRFid vectors
+    std::vector<RRFIds> rrfIdsList; // Vector holding INRRFid and OUTRRFid vectors
     std::vector<unsigned long> filterIDs; // Vector holding INRRFid and OUTRRFid vectors
     MCP2515Configurator configurator;
 
-    // EEPROM
-    unsigned eepromAddressCount = 0;
+    
+
 
     bool readBytes();
     bool writeBytes();
@@ -390,26 +313,6 @@ private:
         }
     }
 
-    // template <typename T, size_t N>
-    // size_t packSingleArray(const T (&array)[N], uint8_t *outputArray, size_t offset)
-    // {
-    //     // static_assert(N * sizeof(T) + offset <= 8, "Data exceeds CAN message size limit.");
-
-    //     for (size_t i = 0; i < N; ++i)
-    //     {
-    //         const uint8_t *elementBytes = reinterpret_cast<const uint8_t *>(&array[i]);
-    //         size_t elementSize = sizeof(T);
-    //         for (size_t byteIndex = 0; byteIndex < elementSize; ++byteIndex)
-    //         {
-    //             if (offset < 8)
-    //             {
-    //                 outputArray[offset++] = elementBytes[elementSize - 1 - byteIndex]; // Reverse the byte order
-    //             }
-    //         }
-    //     }
-    //     return offset;
-    // }
-
     template <typename T, size_t N>
     size_t packSingleArray(const T (&array)[N], uint8_t *outputArray, size_t offset)
     {
@@ -418,15 +321,12 @@ private:
         for (size_t i = 0; i < N; ++i)
         {
             const uint8_t *elementBytes = reinterpret_cast<const uint8_t *>(&array[i]);
-
             size_t elementSize = sizeof(T);
             for (size_t byteIndex = 0; byteIndex < elementSize; ++byteIndex)
             {
-                // Serial.println((String)"NB: "+ elementSize);
                 if (offset < 8)
                 {
-                    // Store the bytes in reverse order for big-endian format
-                    outputArray[offset++] = elementBytes[elementSize - 1 - byteIndex];
+                    outputArray[offset++] = elementBytes[elementSize - 1 - byteIndex]; // Reverse the byte order
                 }
             }
         }
@@ -528,36 +428,6 @@ private:
             offset += sizeof(int);
         }
     }
-
-    //     template <size_t N>
-    // void unpackArray(const uint8_t *&inputArray, int (&outputArray)[N], size_t &offset)
-    // {
-    //     for (size_t i = 0; i < N; ++i)
-    //     {
-    //         outputArray[i] = 0;
-    //         for (size_t byte = 0; byte < sizeof(int); ++byte)
-    //         {
-    //             outputArray[i] |= static_cast<int>(inputArray[offset + byte]) << ((sizeof(int) - 1 - byte) * 8);
-    //         }
-    //         offset += sizeof(int);
-    //     }
-    // }
-
-    template <size_t N>
-    void unpackArray(const uint8_t *&inputArray, uint8_t (&outputArray)[N], size_t &offset)
-    {
-        for (size_t i = 0; i < N; ++i)
-        {
-            outputArray[i] = 0;
-            // Convert from big-endian to little-endian
-            for (int byte = sizeof(uint8_t) - 1; byte >= 0; --byte)
-            {
-                outputArray[i] |= static_cast<uint8_t>(inputArray[offset + byte]) << ((sizeof(uint8_t) - 1 - byte) * 8);
-            }
-            offset += sizeof(uint8_t);
-        }
-    }
-
     template <size_t N>
     void unpackArray(const uint8_t *&inputArray, unsigned long (&outputArray)[N], size_t &offset)
     {
@@ -642,7 +512,8 @@ private:
 
     //** CAN STATUS **//
     void setCANStatusData();
-    void getCANStatusData(unsigned _nodeid, int d0[], int d1[], int d2[], bool &ok);
+    void getCANStatusData(unsigned _nodeid, int d0[], int d1[], int d2[],bool &ok);
+
 };
 
 #endif

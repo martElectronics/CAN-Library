@@ -315,9 +315,6 @@ INT8U MCP_CAN::mcp2515_configRate(const INT8U canSpeed, const INT8U canClock)
             cfg1 = MCP_8MHz_500kBPS_CFG1;
             cfg2 = MCP_8MHz_500kBPS_CFG2;
             cfg3 = MCP_8MHz_500kBPS_CFG3;
-            // cfg1 = 0x00;
-            // cfg2 = 0x90;
-            // cfg3 = 0x82;
             break;
 
         case (CAN_1000KBPS): //   1Mbps
@@ -1188,7 +1185,7 @@ INT8U MCP_CAN::sendMsgBuf(INT32U id, INT8U len, INT8U *buf)
     INT8U ext = 0, rtr = 0;
     INT8U res;
 
-    if (id>0x7FF)
+    if ((id & 0x80000000) == 0x80000000)
         ext = 1;
 
     if ((id & 0x40000000) == 0x40000000)

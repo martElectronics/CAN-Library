@@ -9,7 +9,7 @@ void setup()
 
     unsigned long removeableIDs[2] = {101, 103};
 
-    // Configura la memoria donde se guardan los datos recibidos para que borre todos los paquetes
+    // Configura la memoria donde se guardan los datos recubidos para que borre todos los paquetes
     // que son procesados con getPacket()
     CAN.DataIN.setRemovableIds();
 

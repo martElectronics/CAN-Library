@@ -15,10 +15,10 @@ bool CAN_BUS::readBytes()
     {
         byte rxBuf[8];
         _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
-        if ((DataIN.dataRaw.id>0x7FF))
-            DataIN.dataRaw.typeExtendedId = 1;
+        if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
+            DataIN.dataRaw.typeExtendedId = true;
         else
-            DataIN.dataRaw.typeExtendedId = 0;
+            DataIN.dataRaw.typeExtendedId = false;
 
         if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
         {
@@ -114,7 +114,7 @@ bool CAN_BUS::send()
             byte buf[8];
             // Copy data to buffer
             std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
-           // this->printByteArray(buf, 8);
+
             if(packet.rrf)
             {
             unsigned long mask = 1UL << 30;
@@ -124,7 +124,6 @@ bool CAN_BUS::send()
             }
             // Attempt to send the packet
             if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
-              //  this->printByteArray(buf,8);
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
                 numTxPaqError++;
@@ -230,10 +229,10 @@ void CAN_BUS::receive()
             DataIN.addPacket(DataIN.dataRaw);
         }
 
-         //Serial.println((String) "Rx ID: " + DataIN.dataRaw.id);
+         DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
-        {      
+        {
 
             // Serial.println("Sending requested paquets of rrf");
             sendRequestedRRF(DataIN.dataRaw.id);

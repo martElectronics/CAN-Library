@@ -12,9 +12,6 @@ bool estadoLed;
 unsigned pinLed=16;
 void setup()
 {
-  //Test line
-  
-  //Test line 
   pinMode(pinLed,OUTPUT);
   tiempoAnterior=millis();
   
