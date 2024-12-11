@@ -124,6 +124,8 @@ bool CAN_BUS::send()
             }
             // Attempt to send the packet
             if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
+                
+               
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
                 numTxPaqError++;

@@ -1185,9 +1185,11 @@ INT8U MCP_CAN::sendMsgBuf(INT32U id, INT8U len, INT8U *buf)
     INT8U ext = 0, rtr = 0;
     INT8U res;
 
-    if ((id & 0x80000000) == 0x80000000)
+    if ((id > 0x7FF))
+    {
         ext = 1;
-
+    }
+        
     if ((id & 0x40000000) == 0x40000000)
         rtr = 1;
 

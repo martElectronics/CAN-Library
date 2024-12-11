@@ -166,7 +166,7 @@ public:
             (..., (offset = packArgument(std::forward<Args>(args), outputArray, offset)));
             DataOUT.dataRaw.id = canId;
 
-            DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
+            DataOUT.dataRaw.typeExtendedId = DataOUT.dataRaw.id > 0x7FF;
             DataOUT.dataRaw.rrf = false;
             // Checks if there is a RRF rule stored involving that packet. If so, make
             // WaitForRRF true so send() doesn't send that package unless a rrf is received
