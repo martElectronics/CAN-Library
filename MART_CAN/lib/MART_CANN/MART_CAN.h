@@ -189,7 +189,7 @@ public:
         DataOUT.dataRaw.size = 8;
         DataOUT.dataRaw.rrf = true;
         DataOUT.dataRaw.id = canId;
-        DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id & 0x80000000) != 0;
+        DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id > 0x7FF);
         DataOUT.dataRaw.WaitForRRF = false;
         DataOUT.addPacket(DataOUT.dataRaw);
     }
