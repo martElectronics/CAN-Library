@@ -10,6 +10,7 @@
 #include "CAN_DATA.h"
 #include "common.h"
 #include "MCP2515_Config.h"
+#include <ESP32-TWAI-CAN.hpp>
 
 class CAN_BUS
 {
