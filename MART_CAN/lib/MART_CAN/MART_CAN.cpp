@@ -11,31 +11,47 @@
 bool CAN_BUS::readBytes()
 {
     bool ok = false;
-    if (!digitalRead(_CAN.pinINT) && !config.simulating)
-    {
-        byte rxBuf[8];
-        _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
-        if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
-            DataIN.dataRaw.typeExtendedId = true;
-        else
-            DataIN.dataRaw.typeExtendedId = false;
-
-        if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
+    if(type == HardwareType::Controller){
+        if (!digitalRead(_CAN.pinINT) && !config.simulating)
         {
-            unsigned long mask = ~(1UL << 30);
-            // Clear the bit at bitPosition
-            DataIN.dataRaw.id &= mask;
-            DataIN.dataRaw.rrf = true;
-            DEBUG_PRINTLN("Received RRF");
+            byte rxBuf[8];
+            _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
+            if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
+                DataIN.dataRaw.typeExtendedId = true;
+            else
+                DataIN.dataRaw.typeExtendedId = false;
+
+            if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
+            {
+                unsigned long mask = ~(1UL << 30);
+                // Clear the bit at bitPosition
+                DataIN.dataRaw.id &= mask;
+                DataIN.dataRaw.rrf = true;
+                DEBUG_PRINTLN("Received RRF");
+            }
+            else
+                DataIN.dataRaw.rrf = false;
+
+            ok = true;
         }
         else
-            DataIN.dataRaw.rrf = false;
-
-        ok = true;
-    }
-    else
-    {
-        ok = false;
+        {
+            ok = false;
+        }
+    }else if(type == HardwareType::Transciever){
+        CanFrame frame = {0};
+        if (ESP32Can.readFrame(frame) && !config.simulating)
+        {
+            DataIN.dataRaw.id = frame.identifier;
+            DataIN.dataRaw.size = frame.data_length_code;
+            for (int i = 0; i < 8; i++)
+            {
+                DataIN.dataRaw.bytes[i] = frame.data[i];
+            }
+            DataIN.dataRaw.typeExtendedId = frame.extd;
+            
+            ok = true;
+        }
     }
     return (ok || config.simulating);
 }
@@ -171,14 +187,31 @@ bool CAN_BUS::send(unsigned long id)
 
         // Copy data to buffer
         std::copy(std::begin(packet->bytes), std::end(packet->bytes), std::begin(buf));
-        if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
-        {
-            ERROR_PRINTLN("Error sending message");
-            success = false; // Mark failure but continue sending the rest
+        if(type == HardwareType::Controller){
+            if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
+            {
+                ERROR_PRINTLN("Error sending message");
+                success = false; // Mark failure but continue sending the rest
+            }
+            else
+            {
+                DEBUG_PRINTLN(" sent OK");
+            }
         }
-        else
-        {
-            DEBUG_PRINTLN(" sent OK");
+        else if(type == HardwareType::Transciever){
+            CanFrame frame = {0};
+            frame.identifier = packet->id;
+            frame.extd = packet->typeExtendedId;
+            frame.data_length_code = packet->size;
+            for (int i = 0; i < 8; i++)
+            {
+                frame.data[i] = packet->bytes[i];
+            }
+            if (!ESP32Can.writeFrame(frame))
+            {
+                ERROR_PRINTLN("Error sending message");
+                success = false; // Mark failure but continue sending the rest
+            }
         }
     }
     else

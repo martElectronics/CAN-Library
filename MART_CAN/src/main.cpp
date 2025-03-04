@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include <MART_CAN.h>
 
-
+/*
 CAN_BUS CAN(5);
 
 
@@ -17,8 +17,7 @@ void setup()
 }
 
 void loop()
-{
-   
+{  
    bool dataBool16[16];
    short dataShort1[1],dataShort2[2];
    int dataInt1[1],dataInt2[2];
@@ -56,5 +55,24 @@ void loop()
    CAN.getPacket((unsigned long)0x12, byteArray);
 
 }
+*/
 
-    
+CAN_BUS CAN(HardwareType::Transciever, 500, 1);
+   int packetID = 100;
+void setup(){
+   Serial.begin(9600);
+   if(CAN.error == 1){
+      Serial.println("Error Initializing ESP32Can...");
+   }
+}
+
+ void loop(){
+   byte h[8];
+   //Se leen los datos del bus y se guardan en memoria (DataIN)
+   CAN.receive();
+   //Se procesan los primeros 4 bytes del paquete con ID=100 como "int" y se guardan en dataInt1
+   CAN.getPacket(113, h);
+   CAN.printArray(h);
+   CAN.printReceivedIds();
+
+}

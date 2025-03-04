@@ -12,6 +12,12 @@
 #include "MCP2515_Config.h"
 #include <ESP32-TWAI-CAN.hpp>
 
+
+    enum class HardwareType
+    {
+        Controller,
+        Transciever
+    };
 class CAN_BUS
 {
 
@@ -19,6 +25,9 @@ public:
     // CONVERTER converter;
     MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
+
+    HardwareType type;
+    int error;
 
     struct Config
     {
@@ -30,6 +39,7 @@ public:
     } config;
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
+    
     CAN_BUS(int pinCs) : _CAN(pinCs)
     {
         if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
@@ -87,8 +97,33 @@ public:
     // Destructor
     ~CAN_BUS() {}
 
+
+    // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0) : _CAN(pinCs){
+        error = 0;
+        this->type = type;
+        if(this->type == HardwareType::Controller){
+            
+        }else if(this->type == HardwareType::Transciever){
+            ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
+            if(!ESP32Can.begin(ESP32Can.convertSpeed(500), 5, 4, 10, 10)){
+                Serial.println("Error Initializing ESP32Can...");
+                error =1;
+        }
+        config.respondToRRF = true;
+        config.autoRemoveRRFPacket = true;
+        config.simulating = false;
+        config.autoRemoveStoredFilters = true;
+        config.sendStatusData = false;
+    }
+    }
     // Sends all stored data packets in DataOUT
     bool send();
+    //setup for transciever or controller
+
+    int SetupState(){
+        return error;
+    }
 
     // Sends a specific stored data packet in DataOUT
     bool send(unsigned long id);
@@ -285,6 +320,11 @@ private:
 
     // Method to search for an OUTid and return true if found
     bool searchOutId(unsigned long outId);
+
+    //Change the speed of the bus while running (ms)
+    void ChangeSpeed(unsigned int speed){
+        ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
+    }
 
     // Method to print all RRFIds
     void printRRFIds()
