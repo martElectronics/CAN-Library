@@ -11,7 +11,8 @@
 bool CAN_BUS::readBytes()
 {
     bool ok = false;
-    if(type == HardwareType::Controller){
+    if (type == HardwareType::Controller)
+    {
         if (!digitalRead(_CAN.pinINT) && !config.simulating)
         {
             byte rxBuf[8];
@@ -38,7 +39,9 @@ bool CAN_BUS::readBytes()
         {
             ok = false;
         }
-    }else if(type == HardwareType::Transciever){
+    }
+    else if (type == HardwareType::Transciever)
+    {
         CanFrame frame = {0};
         if (ESP32Can.readFrame(frame) && !config.simulating)
         {
@@ -49,7 +52,7 @@ bool CAN_BUS::readBytes()
                 DataIN.dataRaw.bytes[i] = frame.data[i];
             }
             DataIN.dataRaw.typeExtendedId = frame.extd;
-            
+
             ok = true;
         }
     }
@@ -91,7 +94,7 @@ bool CAN_BUS::send()
 
     unsigned long currentTime = millis();
 
-    //Send status data if the timer reaches PT and the ESP is configured accordingly
+    // Send status data if the timer reaches PT and the ESP is configured accordingly
     if (((millis() - previousStatusIntervalTime) >= (intervalTime / 3)) && (config.sendStatusData))
     {
         numCurrentSamples++;
@@ -123,6 +126,10 @@ bool CAN_BUS::send()
             }
         }
 
+        //**CORREGIR: Incluir la lógica implementada en la función send(unsigned long id) aquí también.
+         //** Esta es la función que se usará casi siempre para mandar la información por el bus, ya que envía todos los paquetes guardados en memoria */
+         //** La otra función send() envía sólo el paquete cuya id se le pasa como parámetro */
+         
         if (readyToSend && !packet.WaitForRRF) {
 
             //Store the packet ID before the possible ID change if the packet is a RRF
@@ -187,7 +194,8 @@ bool CAN_BUS::send(unsigned long id)
 
         // Copy data to buffer
         std::copy(std::begin(packet->bytes), std::end(packet->bytes), std::begin(buf));
-        if(type == HardwareType::Controller){
+        if (type == HardwareType::Controller)
+        {
             if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
             {
                 ERROR_PRINTLN("Error sending message");
@@ -198,7 +206,8 @@ bool CAN_BUS::send(unsigned long id)
                 DEBUG_PRINTLN(" sent OK");
             }
         }
-        else if(type == HardwareType::Transciever){
+        else if (type == HardwareType::Transciever)
+        {
             CanFrame frame = {0};
             frame.identifier = packet->id;
             frame.extd = packet->typeExtendedId;
@@ -257,14 +266,14 @@ void CAN_BUS::receive()
     previousStatusRuntimeTime = millis();
     if (readBytes() || config.simulating)
     {
-        //Store packet in memory if is not in the IDs set by the filter or if are no ids stored
-        if ((filterIDs.empty())||(std::binary_search(filterIDs.begin(), filterIDs.end(), DataIN.dataRaw.id)))
+        // Store packet in memory if is not in the IDs set by the filter or if are no ids stored
+        if ((filterIDs.empty()) || (std::binary_search(filterIDs.begin(), filterIDs.end(), DataIN.dataRaw.id)))
         {
-            //Serial.println("ADDED");
+            // Serial.println("ADDED");
             DataIN.addPacket(DataIN.dataRaw);
         }
 
-         DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
+        DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)
         {

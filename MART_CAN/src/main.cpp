@@ -61,6 +61,7 @@ CAN_BUS CAN(HardwareType::Transciever, 500, 1);
    int packetID = 100;
 void setup(){
    Serial.begin(9600);
+
    if(CAN.error == 1){
       Serial.println("Error Initializing ESP32Can...");
    }
@@ -75,4 +76,6 @@ void setup(){
    CAN.printArray(h);
    CAN.printReceivedIds();
 
+   //**CORREGIR: Implementar una pequeña rutina que reinicialice el hardware para cambiar entre las dos velociades del bus (500kbps y 1Mbps)
+   //** Esta rutina llamará a setupCANHardware al leer la pulsación de un botón por ejemplo */
 }
