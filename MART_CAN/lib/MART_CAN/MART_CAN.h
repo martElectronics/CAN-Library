@@ -97,18 +97,16 @@ public:
     // Destructor
     ~CAN_BUS() {}
 
-
-    // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0) : _CAN(pinCs){
-
-         //**CORREGIR: La configuración de abajo (salvo los config.___) debe de hacerse llamando a un método público de la clase CAN_BUS que tenéis que crear (Por ejemplo setupCANHardware("argumentos de configuración")).
-        //** Este constructor llamará a dicho método aquí (pasándole los valores de configuración a traves de los parámetros ), es simplemente mover el código de abajo al cuerpo de el método de configuración.
-        //** Motivo: La velocidad del bus debe de poder ser cambiada "en caliente" cuando se conecte el carro al BMS sin llamar al constructor" 
-        //** NOTA: la función setupCANHardware debe de tener en cuenta el hardware escogido e implementar la lógica necesaria para configurar uno u otro*/
+    void setupCANHardware(unsigned int speed){
         error = 0;
         this->type = type;
         if(this->type == HardwareType::Controller){
             //**CORREGIR: Incluir inicialización del MCP2515
+            if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            Serial.println("MCP2515 Initialized Successfully!");
+            else
+                Serial.println("Error Initializing MCP2515...");
+            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }else if(this->type == HardwareType::Transciever){
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
             //**CORREGIR: Cambiar el "500" por la velocidad genérica, probando en concreto si todo funciona a 1Mbps
@@ -116,12 +114,22 @@ public:
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
         }
+    }
+    }
+    // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0) : _CAN(pinCs){
+
+         //**CORREGIR: La configuración de abajo (salvo los config.___) debe de hacerse llamando a un método público de la clase CAN_BUS que tenéis que crear (Por ejemplo setupCANHardware("argumentos de configuración")).
+        //** Este constructor llamará a dicho método aquí (pasándole los valores de configuración a traves de los parámetros ), es simplemente mover el código de abajo al cuerpo de el método de configuración.
+        //** Motivo: La velocidad del bus debe de poder ser cambiada "en caliente" cuando se conecte el carro al BMS sin llamar al constructor" 
+        //** NOTA: la función setupCANHardware debe de tener en cuenta el hardware escogido e implementar la lógica necesaria para configurar uno u otro*/
+        setupCANHardware(speed);
+        // Default configuration
         config.respondToRRF = true;
         config.autoRemoveRRFPacket = true;
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
         config.sendStatusData = false;
-    }
     }
     // Sends all stored data packets in DataOUT
     bool send();

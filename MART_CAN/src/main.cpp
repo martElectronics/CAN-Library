@@ -59,12 +59,14 @@ void loop()
 
 CAN_BUS CAN(HardwareType::Transciever, 500, 1);
    int packetID = 100;
+   const int buttonPin = 2;
 void setup(){
    Serial.begin(9600);
 
    if(CAN.error == 1){
       Serial.println("Error Initializing ESP32Can...");
    }
+   pinMode(buttonPin, INPUT_PULLUP);
 }
 
  void loop(){
@@ -76,6 +78,13 @@ void setup(){
    CAN.printArray(h);
    CAN.printReceivedIds();
 
+   if(checkButton() == LOW){
+      setupCANHardware();
+   }
    //**CORREGIR: Implementar una pequeña rutina que reinicialice el hardware para cambiar entre las dos velociades del bus (500kbps y 1Mbps)
    //** Esta rutina llamará a setupCANHardware al leer la pulsación de un botón por ejemplo */
+}
+
+int checkButton(){
+   return digitalRead(buttonPin);
 }

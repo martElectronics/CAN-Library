@@ -146,13 +146,14 @@ bool CAN_BUS::send()
               packet.id |= mask;
             }
             // Attempt to send the packet
-            if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
+            if(type == HardwareType::Controller){
+                if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
+                    
                 
-               
-                ERROR_PRINTLN("Error sending message");
-                success = false; // Mark failure but continue sending the rest
-                numTxPaqError++;
-            } else {
+                    ERROR_PRINTLN("Error sending message");
+                    success = false; // Mark failure but continue sending the rest
+                    numTxPaqError++;
+                } else {
               DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
                 packet.id=idAux;
                 // Update the next send time for this packet if it has a timer
@@ -164,6 +165,36 @@ bool CAN_BUS::send()
                     }
                 }
                 numTXPaqOK++;
+            }
+            }
+            else if(type == HardwareType::Transciever){
+                CanFrame frame = {0};
+                frame.identifier = packet.id;
+                frame.extd = packet.typeExtendedId;
+                frame.data_length_code = packet.size;
+                for (int i = 0; i < 8; i++)
+                {
+                    frame.data[i] = packet.bytes[i];
+                }
+                if (!ESP32Can.writeFrame(frame))
+                {
+                    ERROR_PRINTLN("Error sending message");
+                    success = false; // Mark failure but continue sending the rest
+                    numTxPaqError++;
+                }
+                else
+                {
+                    DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
+                    packet.id=idAux;
+                    // Update the next send time for this packet if it has a timer
+                    for (auto& timer : packetTimers) {
+                        if (timer.packetID == packet.id) {
+                            packet.nextSendTime = currentTime + timer.interval;
+                            break;
+                        }
+                    }
+                    numTXPaqOK++;
+                }
             }
         }
         else if (packet.WaitForRRF) {
