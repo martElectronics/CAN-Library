@@ -99,7 +99,7 @@ public:
 
     void setupCANHardware(unsigned int speed){
         error = 0;
-        this->type = type;
+        //this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if(this->type == HardwareType::Controller){
             //**CORREGIR: Incluir inicialización del MCP2515
             if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
@@ -123,6 +123,7 @@ public:
         //** Este constructor llamará a dicho método aquí (pasándole los valores de configuración a traves de los parámetros ), es simplemente mover el código de abajo al cuerpo de el método de configuración.
         //** Motivo: La velocidad del bus debe de poder ser cambiada "en caliente" cuando se conecte el carro al BMS sin llamar al constructor" 
         //** NOTA: la función setupCANHardware debe de tener en cuenta el hardware escogido e implementar la lógica necesaria para configurar uno u otro*/
+        this->type = type;
         setupCANHardware(speed);
         // Default configuration
         config.respondToRRF = true;
