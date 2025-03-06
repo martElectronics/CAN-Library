@@ -110,7 +110,7 @@ public:
         }else if(this->type == HardwareType::Transciever){
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
             //**CORREGIR: Cambiar el "500" por la velocidad genérica, probando en concreto si todo funciona a 1Mbps
-            if(!ESP32Can.begin(ESP32Can.convertSpeed(500), 5, 4, 10, 10)){
+            if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), 5, 4, 10, 10)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
         }
