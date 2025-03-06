@@ -58,7 +58,8 @@ void loop()
 */
 
 bool flag = false;
-unsigned int speed = 500, speed_factor = 2;
+unsigned int speed = 500, speedFactor = 2;
+unsigned long tiempoDesdeInicio, tiempoActual = 0;
 
 CAN_BUS CAN(HardwareType::Transciever, speed, 1);
 
@@ -81,6 +82,7 @@ int checkButton(){
 
 void loop()
 {
+   tiempoDesdeInicio = millis();
    //PRUEBA PARA RECEIVER
 
    byte h[8];
@@ -94,15 +96,23 @@ void loop()
 
    //Prueba de cambio de velocidad en caliente
 
-
-   /*if(checkButton() == LOW && flag == false){
-      CAN.setupCANHardware(speed_factor*speed);
-      flag = true;
-   }
-   else if(checkButton() == HIGH && flag = true)
+   //Cada 2 segundos se consulta el estado del pulsador mientras se ejecutan las demás tareas
+   if(tiempoDesdeInicio - tiempoActual >= 200)
    {
+      tiempoActual = tiempoDesdeInicio;
 
-   }*/
+      if(checkButton() == LOW && flag == false) // Si está pulsado y no ha sido pulsado antes se cambia la velocidad
+      {
+         CAN.setupCANHardware(speedFactor*speed);
+         flag = true;
+         Serial.println("Se ha cambiado la velocidad en caliente");
+      }
+      else if(checkButton() == HIGH && flag == true) // Si no está pulsado y se ha cambiado antes la velocidad, se cambia
+      {                                              // el factor para que la siguiente vez alterne la velocidad
+         flag = false;
+         speedFactor = (speedFactor % 2) + 1;
+      }
+   }
    //**CORREGIR: Implementar una pequeña rutina que reinicialice el hardware para cambiar entre las dos velociades del bus (500kbps y 1Mbps)
    //** Esta rutina llamará a setupCANHardware al leer la pulsación de un botón por ejemplo 
 
