@@ -68,6 +68,7 @@ void setup(){
 
  void loop(){
    byte h[8];
+   byte h2[8] = {0,1,2,3,4,5,6,7};
    //Se leen los datos del bus y se guardan en memoria (DataIN)
    CAN.receive();
    //Se procesan los primeros 4 bytes del paquete con ID=100 como "int" y se guardan en dataInt1
@@ -75,4 +76,6 @@ void setup(){
    CAN.printArray(h);
    CAN.printReceivedIds();
 
+   CAN.setPacket(100, h2);
+   CAN.send();
 }
