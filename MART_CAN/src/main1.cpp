@@ -3,7 +3,11 @@
 
 
 // MAIN1: PRUEBA PARA 2 ESP32 SIMULTANEAS. ESTE CORRESPONDE A LA QUE TIENE LA ETIQUETA 1
+//** CORREGIR2: Recomiendo que las variables que enviáis cambien en tiempo de ejecución para que de verdad podáis observar en el receptor que se están */
+//** actualizando los datos. Podéis usar algún contador que se vaya incrementando, usar analogRead() con un potenciómetro, etc... */
 
+//** CORREGIR2: La función send(packetID) envía sólo el paquete con esa ID, sin embargo send() sin argumentos manda todos los que están guardados en memoria de forma automática.
+//** una vez que probéis que el send(packetID) por separado funciona, usad la otra función: send() para enviar todo de golpe (llamándola una sóla vez al final del loop() */
 
 bool flag = false;
 unsigned int speed = 500, speedFactor = 2;
@@ -46,6 +50,8 @@ void loop()
    CAN.setPacket(packetID, dataBool16);
    CAN.printArray(dataBool16);
    CAN.send(packetID);
+   //**CORREGIR2: Para mostrar este mensaje por el monitor serial, se debe de comprobar que el paquete se ha mandado de forma correcta */
+   //** para ello podéis usar el bool que devuelve send(), que es true si el paquete se ha enviado OK */
    Serial.println("Paquete enviado por ESP1 a ESP2");
 
    CAN.receive();

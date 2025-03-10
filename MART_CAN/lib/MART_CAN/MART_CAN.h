@@ -97,11 +97,14 @@ public:
     // Destructor
     ~CAN_BUS() {}
 
+    
     void setupCANHardware(unsigned int speed){
         error = 0;
         //this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if(this->type == HardwareType::Controller){
-            //**CORREGIR: Incluir inicialización del MCP2515
+            //**CORREGIR2: Al constructor del MCP2515 hay que pasarle la velocidad por parámetro también.
+            //** Hay que convertirla a el valor numerico 12 o 14 según sea la velocidad de 500 o 1000kbps */
+            //** Podeis verlo con más detalle en los "define" de mcp_can_dfs.h: #define CAN_500KBPS 13 #define CAN_1000KBPS 14 */
             if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
             Serial.println("MCP2515 Initialized Successfully!");
             else
@@ -109,7 +112,10 @@ public:
             _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }else if(this->type == HardwareType::Transciever){
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
-            //**CORREGIR: Cambiar el "500" por la velocidad genérica, probando en concreto si todo funciona a 1Mbps
+            //**CORREGIR2: Configurar los pines TX y RX de forma genérica en ESP32Can.begin(). Si no se lo vais a pasar por parámetro a la función setupCANHardware debéis de :
+            //** Crear dos atributos en la clase que guarden el valor de estos pines cuando se llame al constructor y luego ponerlos aquí
+            //** Los últimos dos parámetros de la función (10,10) hacen referencia al tamaño de las colas de recepción y transmisión. Investigad que ventajas/inconvenientes tendría el ponerlas 
+            //** más grandes o más pequeñas. Han de ser configurables también por parámetro. */
             if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), 5, 4, 10, 10)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
@@ -119,10 +125,10 @@ public:
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
     CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0) : _CAN(pinCs){
 
-         //**CORREGIR: La configuración de abajo (salvo los config.___) debe de hacerse llamando a un método público de la clase CAN_BUS que tenéis que crear (Por ejemplo setupCANHardware("argumentos de configuración")).
-        //** Este constructor llamará a dicho método aquí (pasándole los valores de configuración a traves de los parámetros ), es simplemente mover el código de abajo al cuerpo de el método de configuración.
-        //** Motivo: La velocidad del bus debe de poder ser cambiada "en caliente" cuando se conecte el carro al BMS sin llamar al constructor" 
-        //** NOTA: la función setupCANHardware debe de tener en cuenta el hardware escogido e implementar la lógica necesaria para configurar uno u otro*/
+        //**CORREGIR2: El prototipo de la función no es el adecuado, el transceiver necesita conocer cuales son los pines TX y RX
+        //** Debéis de añadir los argumentos que sean necesarios. Si la configuración del controller o transceiver necesita de un número de argumentos distinto, podéis implementar */
+        //** dos constructores con un número de parametros distinto implementar lógica adicional dentro de este constructor usando parámetros por defecto en el prototipo de la función (mucho más elegante) */
+        //** Os dejo aquí un enlace para que veáis cómo se hace: https://en.cppreference.com/w/cpp/language/default_arguments */
         this->type = type;
         setupCANHardware(speed);
         // Default configuration

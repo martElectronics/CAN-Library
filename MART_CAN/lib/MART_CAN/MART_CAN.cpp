@@ -126,9 +126,7 @@ bool CAN_BUS::send()
             }
         }
 
-        //**CORREGIR: Incluir la lógica implementada en la función send(unsigned long id) aquí también.
-         //** Esta es la función que se usará casi siempre para mandar la información por el bus, ya que envía todos los paquetes guardados en memoria */
-         //** La otra función send() envía sólo el paquete cuya id se le pasa como parámetro */
+       
          
         if (readyToSend && !packet.WaitForRRF) {
 
