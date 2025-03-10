@@ -12,6 +12,8 @@
 #include "MCP2515_Config.h"
 #include <ESP32-TWAI-CAN.hpp>
 
+#define MCP_SPEED_500 500
+#define MCP_SPEED_1000 1000
 
     enum class HardwareType
     {
@@ -105,16 +107,27 @@ public:
             //**CORREGIR2: Al constructor del MCP2515 hay que pasarle la velocidad por parámetro también.
             //** Hay que convertirla a el valor numerico 12 o 14 según sea la velocidad de 500 o 1000kbps */
             //** Podeis verlo con más detalle en los "define" de mcp_can_dfs.h: #define CAN_500KBPS 13 #define CAN_1000KBPS 14 */
-            if(speed == 500){
+            if(speed == MCP_SPEED_500){
                 if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
                     Serial.println("MCP2515 Initialized Successfully!");
                 else
                     Serial.println("Error Initializing MCP2515...");
+                    error =1;
+                    return;
                 _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-            }else if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            }else if (speed == MCP_SPEED_1000){
+                if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
                     Serial.println("MCP2515 Initialized Successfully!");
+                    
                else
                     Serial.println("Error Initializing MCP2515...");
+                    error =1;
+                    return;
+            }else{
+                Serial.println("Error Initializing MCP2515 INVALID SPEED...");
+                error =1;
+                return;
+            }
             _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }else if(this->type == HardwareType::Transciever){
             //ESP32Can.setPins(RX, TX);
@@ -127,7 +140,7 @@ public:
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
         }
-    }
+        }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
     CAN_BUS(HardwareType type, unsigned int speed, int _nodeID,int RX = 4,int TX = 5, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
