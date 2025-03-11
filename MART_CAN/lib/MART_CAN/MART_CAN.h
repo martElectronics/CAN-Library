@@ -136,14 +136,14 @@ public:
             //** Crear dos atributos en la clase que guarden el valor de estos pines cuando se llame al constructor y luego ponerlos aquí
             //** Los últimos dos parámetros de la función (10,10) hacen referencia al tamaño de las colas de recepción y transmisión. Investigad que ventajas/inconvenientes tendría el ponerlas 
             //** más grandes o más pequeñas. Han de ser configurables también por parámetro. */
-            if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), RX, TX, 10, 10)){
+            if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, 10, 10)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
         }
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID,int RX = 4,int TX = 5, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int TX = 5, int RX = 4, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
 
         //**CORREGIR2: El prototipo de la función no es el adecuado, el transceiver necesita conocer cuales son los pines TX y RX
         //** Debéis de añadir los argumentos que sean necesarios. Si la configuración del controller o transceiver necesita de un número de argumentos distinto, podéis implementar */

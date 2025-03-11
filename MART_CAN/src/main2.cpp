@@ -6,15 +6,16 @@
 
 #define MAX_BYTES 8
 
-bool flag = false;
+bool flag = false, fin = false;
 unsigned int speed = 500, speedFactor = 2;
 unsigned long tiempoDesdeInicio, tiempoActual = 0;
 const int buttonPin = 25;
 unsigned int cont = 0;
 unsigned long packetID;
-bool success = false;
+bool success = true;
 
 CAN_BUS CAN(HardwareType::Transciever, speed, 1);
+//CAN_BUS CAN(HardwareType::Transciever, speed, 1, 4, 5);
 
 void desplazar_derecha(byte dataByte[], int size) 
 {
@@ -50,75 +51,89 @@ void loop()
 
    // LA ESP2 VA A RECIBIR LOS PAQUETES CON ID X Y VA A ENVIAR A LA ESP1 LOS PAQUETES IDX+1
 
-   /*bool dataBool16[16] = {1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1};
-   short dataShort1[2] = {12, -1148};
-   int dataInt1[1] = {-3}, dataInt2[2] = {-3, 1234567};
-
-   CAN.setPacket(packetID, dataBool16);
-   CAN.printArray(dataBool16);
-   CAN.send(packetID);
-   Serial.println("Paquete enviado por ESP2 a ESP1");
-
-
-   CAN.receive();
-   CAN.getPacket(packetID, dataReceived);
-   CAN.printArray(dataReceived);
-   CAN.printReceivedIds();
-   Serial.println("Paquete recibido de ESP1 por ESP2");
-   packetID++;
-
-   CAN.setPacket(packetID, dataInt2);
-   CAN.printArray(dataInt2);
-   CAN.send(packetID);
-   Serial.println("Paquete enviado por ESP2 a ESP1");
-
-   CAN.receive();
-   CAN.getPacket(packetID, dataReceived);
-   CAN.printArray(dataReceived);
-   CAN.printReceivedIds();
-   Serial.println("Paquete recibido de ESP1 por ESP2");
-   packetID++;
-
-   CAN.setPacket(packetID, dataShort1, dataInt1);
-   CAN.send(packetID);
-   Serial.println("Paquete enviado por ESP2 a ESP1");
-
-   CAN.receive();
-   CAN.getPacket(packetID, dataReceived);
-   CAN.printArray(dataReceived);
-   CAN.printReceivedIds();
-   Serial.println("Paquete recibido de ESP1 por ESP2");
-   packetID++;
-
-   CAN.setPacket(packetID, dataByte);
-   CAN.printArray(dataByte);
-   CAN.send(packetID);
-   Serial.println("Paquete enviado por ESP2 a ESP1");*/
-
    byte dataByte[MAX_BYTES] = {1,0,0,0,1,1,1,1};
    byte dataReceived[MAX_BYTES];
 
-   for(packetID = 1; packetID <= 10; packetID++)
+   // PARA COMPROBAR IDs NORMALES (<= 2047) CON SEND(ID)
+   for(packetID = 1; packetID <= 200; packetID++)
    {
       if(packetID % 2 == 0)
       {
          CAN.setPacket(packetID, dataByte);
+         Serial.print("\nPaquete para enviar: ");fflush(stdout);
          CAN.printArray(dataByte);
-         if(CAN.send(packetID) == true)
+         success = CAN.send(packetID);
+         if(success == true)
          {
-            Serial.println("Paquete enviado por ESP2 a ESP1");
+            Serial.println("Paquete enviado por ESP2 a ESP1\n");fflush(stdout);
+            desplazar_derecha(dataByte, MAX_BYTES);
          }
       }
       else
       {
          CAN.receive();
          CAN.getPacket(packetID, dataReceived);
-         Serial.println("Paquete enviado de ESP1 por ESP2");
-         CAN.printReceivedIds();
+         Serial.println("Paquete recibido de ESP1 por ESP2");fflush(stdout);
+         Serial.print("Paquete recibido: ");fflush(stdout);
          CAN.printArray(dataReceived);
       }
-      desplazar_derecha(dataByte, MAX_BYTES);
    }
+   
+   // PARA COMPROBAR IDs EXTENDIDAS (>2047) CON SEND(ID)
+   /*for(packetID = 3000; packetID <= 3200; packetID++)
+   {
+      if(packetID % 2 == 0)
+      {
+         CAN.setPacket(packetID, dataByte);
+         Serial.print("\nPaquete para enviar: ");fflush(stdout);
+         CAN.printArray(dataByte);
+         success = CAN.send(packetID);
+         if(success == true)
+         {
+            Serial.println("Paquete enviado por ESP2 a ESP1\n");fflush(stdout);
+            desplazar_derecha(dataByte, MAX_BYTES);
+         }
+      }
+      else
+      {
+         CAN.receive();
+         CAN.getPacket(packetID, dataReceived);
+         Serial.println("Paquete recibido de ESP1 por ESP2");fflush(stdout);
+         Serial.print("Paquete recibido: ");fflush(stdout);
+         CAN.printArray(dataReceived);
+      }
+   }*/
+
+   // PARA PROBAR SEND()
+   /*for(packetID = 3000; packetID <= 3200; packetID++)
+   {
+      if(packetID % 2 == 0)
+      {
+         CAN.setPacket(packetID, dataByte);
+         Serial.print("Paquete para enviar: ");fflush(stdout);
+         CAN.printArray(dataByte);
+         desplazar_derecha(dataByte, MAX_BYTES);
+      }
+   }
+
+   success = CAN.send();
+   if(success == true)
+   {
+      Serial.print(packetID);
+      Serial.println("paquetes enviados por ESP1 a ESP2\n");fflush(stdout);
+   }
+
+   for(packetID = 3000; packetID <= 3200; packetID++)
+   {
+      if(packetID % 2 != 0)
+      {
+         CAN.receive();
+         CAN.getPacket(packetID, dataReceived);
+      }
+   }
+
+   Serial.println("Paquetes recibidos de ESP2 por ESP1:");fflush(stdout);
+   CAN.printReceivedIds();*/
 
 
    //Cada 100ms se consulta el estado del pulsador mientras se ejecutan las demás tareas
