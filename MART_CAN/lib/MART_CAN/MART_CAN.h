@@ -143,7 +143,7 @@ public:
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int TX = 5, int RX = 4, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
 
         //**CORREGIR2: El prototipo de la función no es el adecuado, el transceiver necesita conocer cuales son los pines TX y RX
         //** Debéis de añadir los argumentos que sean necesarios. Si la configuración del controller o transceiver necesita de un número de argumentos distinto, podéis implementar */
