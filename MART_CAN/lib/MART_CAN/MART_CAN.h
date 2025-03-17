@@ -104,9 +104,6 @@ public:
         error = 0;
         //this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if(this->type == HardwareType::Controller){
-            //**CORREGIR2: Al constructor del MCP2515 hay que pasarle la velocidad por parámetro también.
-            //** Hay que convertirla a el valor numerico 12 o 14 según sea la velocidad de 500 o 1000kbps */
-            //** Podeis verlo con más detalle en los "define" de mcp_can_dfs.h: #define CAN_500KBPS 13 #define CAN_1000KBPS 14 */
             if(speed == MCP_SPEED_500){
                 if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
                     Serial.println("MCP2515 Initialized Successfully!");
@@ -132,10 +129,7 @@ public:
         }else if(this->type == HardwareType::Transciever){
             //ESP32Can.setPins(RX, TX);
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
-            //**CORREGIR2: Configurar los pines TX y RX de forma genérica en ESP32Can.begin(). Si no se lo vais a pasar por parámetro a la función setupCANHardware debéis de :
-            //** Crear dos atributos en la clase que guarden el valor de estos pines cuando se llame al constructor y luego ponerlos aquí
-            //** Los últimos dos parámetros de la función (10,10) hacen referencia al tamaño de las colas de recepción y transmisión. Investigad que ventajas/inconvenientes tendría el ponerlas 
-            //** más grandes o más pequeñas. Han de ser configurables también por parámetro. */
+            //**CORREGIR3: El tamaño de la cola debe de ser genérica y configurable por parámetro, podéis usar unos parámetros por defecto como en el caso del constructor
             if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, 10, 10)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
@@ -145,11 +139,15 @@ public:
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
     CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
 
-        //**CORREGIR2: El prototipo de la función no es el adecuado, el transceiver necesita conocer cuales son los pines TX y RX
-        //** Debéis de añadir los argumentos que sean necesarios. Si la configuración del controller o transceiver necesita de un número de argumentos distinto, podéis implementar */
-        //** dos constructores con un número de parametros distinto implementar lógica adicional dentro de este constructor usando parámetros por defecto en el prototipo de la función (mucho más elegante) */
-        //** Os dejo aquí un enlace para que veáis cómo se hace: https://en.cppreference.com/w/cpp/language/default_arguments */
+        //**CORREGIR3: Sigue sin estar bien. En el caso de que se use el MCP2515 se tendrían que ignorar los argumentos TX y RX y no es posible ya que el pinCs está al final.
+        //** Para solucionar esto podéis: 
+        //**1. Poner el pinCs como cuarto argumento y tx y rx los últimos además de implementar lógica adicional para configurar el controller o el transceiver, ya que aunque el constructor se llame con sólo 4 argumentos (en caso del controller), 
+        //** no se sabría el tipo de hardware a usar. */  o bien:
+        //**2. Crear dos constructores que inicialicen un hardware u otro (con 4 argumentos para el controller y 6 para el transceiver) */
+        //**3. Otra forma que se os ocurra a vosotros */
+        //**Si veis que los constructores que yo implementé en su día os estan fastidiando y queréis usar otros para que sean más compatibles con vuestra lógica los podéis cambiar, no problem */
         
+
         setupCANHardware(speed);
         // Default configuration
         config.respondToRRF = true;

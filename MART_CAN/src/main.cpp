@@ -114,9 +114,6 @@ void loop()
          speedFactor = (speedFactor % 2) + 1;
       }
    }
-   //**CORREGIR: Implementar una pequeña rutina que reinicialice el hardware para cambiar entre las dos velociades del bus (500kbps y 1Mbps)
-   //** Esta rutina llamará a setupCANHardware al leer la pulsación de un botón por ejemplo 
-
    //PRUEBA PARA SEND
 
    bool dataBool16[16] = {1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1};

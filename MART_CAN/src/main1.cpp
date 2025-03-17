@@ -2,11 +2,7 @@
 #include <MART_CAN.h>
 
 // MAIN1: PRUEBA PARA 2 ESP32 SIMULTANEAS. ESTE CORRESPONDE A LA QUE TIENE LA ETIQUETA 1
-//** CORREGIR2: Recomiendo que las variables que enviáis cambien en tiempo de ejecución para que de verdad podáis observar en el receptor que se están */
-//** actualizando los datos. Podéis usar algún contador que se vaya incrementando, usar analogRead() con un potenciómetro, etc... */
 
-//** CORREGIR2: La función send(packetID) envía sólo el paquete con esa ID, sin embargo send() sin argumentos manda todos los que están guardados en memoria de forma automática.
-//** una vez que probéis que el send(packetID) por separado funciona, usad la otra función: send() para enviar todo de golpe (llamándola una sóla vez al final del loop() */
 
 #define MAX_BYTES 8
 
@@ -144,10 +140,6 @@ void loop()
 
    Serial.println("Paquetes recibidos de ESP2 por ESP1:");fflush(stdout);
    CAN.printReceivedIds();*/
-   
-   
-   //**CORREGIR2: Para mostrar este mensaje por el monitor serial, se debe de comprobar que el paquete se ha mandado de forma correcta */
-   //** para ello podéis usar el bool que devuelve send(), que es true si el paquete se ha enviado OK */
 
 
    //Cada 100ms se consulta el estado del pulsador mientras se ejecutan las demás tareas
