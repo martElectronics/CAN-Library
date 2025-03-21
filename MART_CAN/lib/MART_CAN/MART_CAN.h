@@ -100,7 +100,7 @@ public:
     ~CAN_BUS() {}
 
     
-    void setupCANHardware(unsigned int speed){
+    void setupCANHardware(unsigned int speed, uint16_t txQueue = 10, uint16_t rxQueue = 10){
         error = 0;
         //this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if(this->type == HardwareType::Controller){
@@ -130,14 +130,14 @@ public:
             //ESP32Can.setPins(RX, TX);
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
             //**CORREGIR3: El tamaño de la cola debe de ser genérica y configurable por parámetro, podéis usar unos parámetros por defecto como en el caso del constructor
-            if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, 10, 10)){
+            if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, txQueue, rxQueue)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
         }
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, int pinCs = 0) : _CAN(pinCs), type(type), RX(RX), TX(TX){
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 10, uint16_t rxQueue=10) : _CAN(pinCs), type(type), RX(RX), TX(TX){
 
         //**CORREGIR3: Sigue sin estar bien. En el caso de que se use el MCP2515 se tendrían que ignorar los argumentos TX y RX y no es posible ya que el pinCs está al final.
         //** Para solucionar esto podéis: 
@@ -148,7 +148,7 @@ public:
         //**Si veis que los constructores que yo implementé en su día os estan fastidiando y queréis usar otros para que sean más compatibles con vuestra lógica los podéis cambiar, no problem */
         
 
-        setupCANHardware(speed);
+        setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
         config.respondToRRF = true;
         config.autoRemoveRRFPacket = true;
