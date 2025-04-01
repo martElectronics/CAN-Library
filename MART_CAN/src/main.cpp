@@ -1,6 +1,6 @@
-
 #include <Arduino.h>
 #include <MART_CAN.h>
+
 
 /*
 CAN_BUS CAN(5);
@@ -61,7 +61,7 @@ bool flag = false;
 unsigned int speed = 500, speedFactor = 2;
 unsigned long tiempoDesdeInicio, tiempoActual = 0;
 
-CAN_BUS CAN(HardwareType::Transciever, speed, 1);
+CAN_BUS CAN(HardwareType::Transciever, speed, 1, 10);
 
 int packetID = 100;
 const int buttonPin = 25;
@@ -118,7 +118,7 @@ void loop()
 
    bool dataBool16[16] = {1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1};
    short dataShort1[1] = {12}, dataShort2[2] = {12, -1148};
-   int dataInt1[1] = {-3}, dataInt2[2] = {-3, 1234567};
+   int dataInt1[1] = {-3}, dataInt2[2] = {-3, 1234};
    float dataFloat1[1] = {3.142592};
    byte dataByte[8] = {1,0,0,0,1,1,1,1};
 

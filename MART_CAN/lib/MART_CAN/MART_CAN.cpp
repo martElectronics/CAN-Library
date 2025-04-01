@@ -42,6 +42,7 @@ bool CAN_BUS::readBytes()
     }
     else if (type == HardwareType::Transciever)
     {
+        /*
         CanFrame frame = {0};
         if (ESP32Can.readFrame(frame) && !config.simulating)
         {
@@ -54,7 +55,7 @@ bool CAN_BUS::readBytes()
             DataIN.dataRaw.typeExtendedId = frame.extd;
 
             ok = true;
-        }
+        }*/
     }
     return (ok || config.simulating);
 }
@@ -134,7 +135,8 @@ bool CAN_BUS::send()
             unsigned long idAux=packet.id;
             byte buf[8];
             // Copy data to buffer
-            std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(buf));
+            
+            memcpy(buf, packet.bytes, packet.size);
 
             if(packet.rrf)
             {
@@ -166,6 +168,7 @@ bool CAN_BUS::send()
             }
             }
             else if(type == HardwareType::Transciever){
+                /*
                 CanFrame frame = {0};
                 frame.identifier = packet.id;
                 frame.extd = packet.typeExtendedId;
@@ -192,7 +195,7 @@ bool CAN_BUS::send()
                         }
                     }
                     numTXPaqOK++;
-                }
+                }*/
             }
         }
         else if (packet.WaitForRRF) {
@@ -222,7 +225,7 @@ bool CAN_BUS::send(unsigned long id)
         byte buf[8];
 
         // Copy data to buffer
-        std::copy(std::begin(packet->bytes), std::end(packet->bytes), std::begin(buf));
+        memcpy(buf, packet->bytes, len);
         if (type == HardwareType::Controller)
         {
             if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
@@ -237,6 +240,7 @@ bool CAN_BUS::send(unsigned long id)
         }
         else if (type == HardwareType::Transciever)
         {
+            /*
             CanFrame frame = {0};
             frame.identifier = packet->id;
             frame.extd = packet->typeExtendedId;
@@ -249,7 +253,7 @@ bool CAN_BUS::send(unsigned long id)
             {
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
-            }
+            }*/
         }
     }
     else
@@ -264,12 +268,12 @@ bool CAN_BUS::send(unsigned long id)
 bool CAN_BUS::sendRequestedRRF(unsigned long id)
 {
     bool ok = true;
-    auto outIds = getOutIdsByInId(id);
-    if (outIds)
+    std::vector<unsigned long> outIds = getOutIdsByInId(id);
+    if (!outIds.empty())
     {
         DEBUG_PRINTLN("Sending messages for OUTRRFids associated with INRRFid 0x");
         DEBUG_PRINTLN(id);
-        for (unsigned long id : outIds.value())
+        for (unsigned long id : outIds)
         {
             if (!send(id))
                 ok = false; // Call the send method for each OUTRRFid
@@ -349,7 +353,7 @@ void CAN_BUS::setRRFId(unsigned long inId, unsigned long outId)
     }
 }
 
-std::optional<std::vector<unsigned long>> CAN_BUS::getOutIdsByInId(unsigned long inId)
+std::vector<unsigned long> CAN_BUS::getOutIdsByInId(unsigned long inId)
 {
     for (const auto &rrfIds : rrfIdsList)
     {
@@ -360,7 +364,7 @@ std::optional<std::vector<unsigned long>> CAN_BUS::getOutIdsByInId(unsigned long
             return rrfIds.OUTRRFid;
         }
     }
-    return std::nullopt; // inId not found
+    return std::vector<unsigned long>(); // inId not found
 }
 
 bool CAN_BUS::searchOutId(unsigned long outId)
@@ -388,7 +392,7 @@ bool CAN_BUS::setFilters(const unsigned long ids[], unsigned size)
     {
         filterIDs.push_back(ids[i]);
     }
-    sort(filterIDs.begin(), filterIDs.end());
+    std::sort(filterIDs.begin(), filterIDs.end());
     return true;
 }
 

@@ -30,7 +30,7 @@ public:
         {
             // If a packet with the same id is found, update its information
             it->size = packet.size;
-            std::copy(std::begin(packet.bytes), std::end(packet.bytes), std::begin(it->bytes));
+            memcpy(it->bytes, packet.bytes, sizeof(packet.bytes));
             lastAddedPacket = &(*it); // Update the pointer to the last updated packet
         }
         else

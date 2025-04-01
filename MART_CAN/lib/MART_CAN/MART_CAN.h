@@ -3,17 +3,21 @@
 #define MARTCAN_H
 
 #include <Arduino.h>
+#include <ArduinoSTL.h>
 #include <bitset>
 #include <cstring>
-#include <optional>
+#include <utility> 
+
+//#include <optional>
 #include "mcp_can.h"
 #include "CAN_DATA.h"
 #include "common.h"
 #include "MCP2515_Config.h"
-#include <ESP32-TWAI-CAN.hpp>
+//#include <ESP32-TWAI-CAN.hpp>
 
 #define MCP_SPEED_500 500
 #define MCP_SPEED_1000 1000
+
 
     enum class HardwareType
     {
@@ -107,19 +111,21 @@ public:
             if(speed == MCP_SPEED_500){
                 if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
                     Serial.println("MCP2515 Initialized Successfully!");
-                else
+                else{
                     Serial.println("Error Initializing MCP2515...");
                     error =1;
                     return;
+                }
                 _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
             }else if (speed == MCP_SPEED_1000){
                 if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
                     Serial.println("MCP2515 Initialized Successfully!");
                     
-               else
+               else{
                     Serial.println("Error Initializing MCP2515...");
                     error =1;
                     return;
+               }
             }else{
                 Serial.println("Error Initializing MCP2515 INVALID SPEED...");
                 error =1;
@@ -127,13 +133,13 @@ public:
             }
             _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }else if(this->type == HardwareType::Transciever){
-            //ESP32Can.setPins(RX, TX);
+           /* //ESP32Can.setPins(RX, TX);
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
             //**CORREGIR3: El tamaño de la cola debe de ser genérica y configurable por parámetro, podéis usar unos parámetros por defecto como en el caso del constructor
             if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, txQueue, rxQueue)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
-        }
+        }*/
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
@@ -178,7 +184,7 @@ public:
     bool getPacket(unsigned long canId, Args &...args)
     {
         bool ok = true;
-        std::size_t size = (arraySizeInBits(args) + ...);
+        std::size_t size = calculateTotalSize(args...);
         if (size > 64)
         {
             ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >64");
@@ -200,6 +206,16 @@ public:
             }
         }
         return (ok || config.simulating);
+    }
+
+    template <typename T>
+    std::size_t calculateTotalSize(T& arg) {
+        return arraySizeInBits(arg);
+    }
+
+    template <typename T, typename... Args>
+    std::size_t calculateTotalSize(T& first, Args&... rest) {
+        return arraySizeInBits(first) + calculateTotalSize(rest...);
     }
 
     // Retrieves the last received packet and unpacks its data
@@ -225,7 +241,7 @@ public:
     bool setPacket(unsigned long canId, Args &&...args)
     {
         bool ok = true;
-        std::size_t size = (arraySizeInBits(args) + ...);
+        std::size_t size = calculateTotalSize(args...);
         if (size > 64)
         {
             ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >8");
@@ -238,7 +254,7 @@ public:
             uint8_t *outputArray = DataOUT.dataRaw.bytes;
             std::fill_n(outputArray, 8, 0x00); // Initialize with 0x00
             size_t offset = 0;
-            (..., (offset = packArgument(std::forward<Args>(args), outputArray, offset)));
+            packArgumentsRecursive(outputArray, offset, args...);
             DataOUT.dataRaw.id = canId;
 
             DataOUT.dataRaw.typeExtendedId = DataOUT.dataRaw.id > 0x7FF;
@@ -258,6 +274,15 @@ public:
         return ok;
     }
 
+    template <typename T>
+    void packArgumentsRecursive(uint8_t* outputArray, size_t& offset, T& arg) {
+        offset = packArgument(arg, outputArray, offset);
+    }
+    template <typename T, typename... Args>
+    void packArgumentsRecursive(uint8_t* outputArray, size_t& offset, T& first, Args&... rest) {
+        offset = packArgument(first, outputArray, offset);
+        packArgumentsRecursive(outputArray, offset, rest...);
+    }
     // Packs RRF message
     void setPacket(unsigned long canId)
     {
@@ -355,16 +380,17 @@ private:
     bool readBytes();
     bool writeBytes();
     // Method to search for an InID and return the associated OUTids vector
-    std::optional<std::vector<unsigned long>> getOutIdsByInId(unsigned long inId);
+    std::vector<unsigned long> getOutIdsByInId(unsigned long inId);
 
     // Method to search for an OUTid and return true if found
     bool searchOutId(unsigned long outId);
 
+    /*
     //Change the speed of the bus while running (ms)
     void ChangeSpeed(unsigned int speed){
         ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
     }
-
+*/
     // Method to print all RRFIds
     void printRRFIds()
     {
@@ -442,43 +468,62 @@ private:
         return offset + byteIndex; // Return the new offset
     }
     // Helper function to process a single argument
+    // Specialized version for boolean arrays
+    template <size_t N>
+    size_t processArgument(const bool (&array)[N], uint8_t *outputArray, size_t offset)
+    {
+        // Special handling for boolean arrays
+        return packBoolArrayAsBits(array, N, outputArray, offset);
+    }
+
     template <typename T, size_t N>
     size_t processArgument(const T (&array)[N], uint8_t *outputArray, size_t offset)
     {
-        if constexpr (std::is_same_v<T, bool>)
-        {
-            // Special handling for boolean arrays
-            return packBoolArrayAsBits(array, N, outputArray, offset);
-        }
-        else
-        {
-            // Default handling for other types
-            return packSingleArray(array, outputArray, offset);
-        }
+        // Default handling for other types
+        return packSingleArray(array, outputArray, offset);
     }
 
-    template <typename T>
-    size_t packArgument(const T &arg, uint8_t *outputArray, size_t offset)
+// Helper function to detect if a value is a float
+template <typename T>
+bool isFloatType(const T& value) {
+    // Create a float and the value we're testing
+    float test_float = 1.5f;
+    T converted = static_cast<T>(test_float);
+    
+    // If T is float, this comparison will work correctly
+    // If T is not float, this comparison might give false positives in rare cases
+    // but it's better than using std::is_same which you can't use
+    return (converted == test_float) && 
+           (sizeof(T) == sizeof(float)) && 
+           (static_cast<int>(test_float) != test_float); // Floats have fractional parts
+}
+
+template <typename T>
+size_t packArgument(const T &arg, uint8_t *outputArray, size_t offset)
+{
+    // Use compile-time size detection instead of type traits
+    constexpr bool might_be_float = (sizeof(T) == sizeof(float));
+    
+    // If it's potentially a float, check a runtime characteristic of floats
+    if (might_be_float && isFloatType(arg))
     {
-        if constexpr (std::is_same_v<T, float>)
+        // Special handling for float
+        const uint8_t *elementBytes = reinterpret_cast<const uint8_t *>(&arg);
+        for (size_t byteIndex = 0; byteIndex < sizeof(T); ++byteIndex)
         {
-            // Special handling for float
-            const uint8_t *elementBytes = reinterpret_cast<const uint8_t *>(&arg);
-            for (size_t byteIndex = 0; byteIndex < sizeof(T); ++byteIndex)
+            if (offset < 8)
             {
-                if (offset < 8)
-                {
-                    outputArray[offset++] = elementBytes[sizeof(T) - 1 - byteIndex]; // Reverse the byte order for big-endian
-                }
+                outputArray[offset++] = elementBytes[sizeof(T) - 1 - byteIndex]; // Reverse the byte order for big-endian
             }
-        }
-        else
-        {
-            // Default handling for other types
-            return processArgument(arg, outputArray, offset);
         }
         return offset;
     }
+    else
+    {
+        // Default handling for other types
+        return processArgument(arg, outputArray, offset);
+    }
+}
 
     // Specialization for array types
     template <typename T, size_t N>
@@ -578,17 +623,20 @@ private:
         }
     }
 
+    // Base case - no more arguments to process
+    void unpackCANMessage(const uint8_t *inputArray, size_t &offset)
+    {
+        // Do nothing - end of recursion
+    }
+
+    // Recursive case - process first argument and continue with rest
     template <typename T, typename... Args>
     void unpackCANMessage(const uint8_t *inputArray, size_t &offset, T &first, Args &...rest)
     {
         unpackArray(inputArray, first, offset);
-        if constexpr (sizeof...(rest) > 0)
-        {
-            unpackCANMessage(inputArray, offset, rest...);
-        }
+        unpackCANMessage(inputArray, offset, rest...); // Continue recursion
     }
 
-    // Overload for starting the recursion
     template <typename... Args>
     void unpackCANMessage(const uint8_t *inputArray, Args &...args)
     {
