@@ -109,8 +109,9 @@ public:
         //this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if(this->type == HardwareType::Controller){
             if(speed == MCP_SPEED_500){
-                if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
+                if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK){
                     Serial.println("MCP2515 Initialized Successfully!");
+                }
                 else{
                     Serial.println("Error Initializing MCP2515...");
                     error =1;
@@ -118,9 +119,9 @@ public:
                 }
                 _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
             }else if (speed == MCP_SPEED_1000){
-                if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+                if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK){
                     Serial.println("MCP2515 Initialized Successfully!");
-                    
+                }
                else{
                     Serial.println("Error Initializing MCP2515...");
                     error =1;

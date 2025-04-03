@@ -14,7 +14,7 @@ unsigned int cont = 0;
 unsigned long packetID;
 bool success = true;
 
-CAN_BUS CAN(HardwareType::Transciever, speed, 1);
+CAN_BUS CAN(HardwareType::Controller, speed, 1,10); // Cambiar el pin de la transciever si se usa
 //CAN_BUS CAN(HardwareType::Transciever, speed, 1, 26, 25); // Cambiar pin del boton si se usa
 
 
