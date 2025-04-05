@@ -111,6 +111,7 @@ The MART_CAN library is an Arduino library designed to facilitate CAN (Controlle
 
 
 </span>
+
 # Acknowledgments
 The MART_CAN library wouldn't be possible without the contributions of the open-source community. Special thanks to all the contributors who have helped make this library possible.
 
