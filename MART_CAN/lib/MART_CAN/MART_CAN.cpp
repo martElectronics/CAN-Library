@@ -42,7 +42,11 @@ bool CAN_BUS::readBytes()
     }
     else if (type == HardwareType::Transciever)
     {
-        /*
+        #if defined (ARDUINO_MICRO)
+                Serial.println("Not available for arduino + transciever");
+            #endif
+        #if defined(ESP32) || defined(ESP32S3)
+        
         CanFrame frame = {0};
         if (ESP32Can.readFrame(frame) && !config.simulating)
         {
@@ -55,7 +59,8 @@ bool CAN_BUS::readBytes()
             DataIN.dataRaw.typeExtendedId = frame.extd;
 
             ok = true;
-        }*/
+        }
+        #endif
     }
     return (ok || config.simulating);
 }
@@ -168,7 +173,11 @@ bool CAN_BUS::send()
             }
             }
             else if(type == HardwareType::Transciever){
-                /*
+                #if defined (ARDUINO_MICRO)
+                Serial.println("Not available for arduino + transciever");
+            #endif
+                #if defined(ESP32) || defined(ESP32S3)
+                
                 CanFrame frame = {0};
                 frame.identifier = packet.id;
                 frame.extd = packet.typeExtendedId;
@@ -195,12 +204,14 @@ bool CAN_BUS::send()
                         }
                     }
                     numTXPaqOK++;
-                }*/
+                }
+                #endif
             }
-        }
-        else if (packet.WaitForRRF) {
-            DEBUG_PRINTLN((String)"Packet not sent because it is waiting for a RRF ID = " + packet.id);
-        } });
+            }
+            else if (packet.WaitForRRF) {
+                DEBUG_PRINTLN((String)"Packet not sent because it is waiting for a RRF ID = " + packet.id);
+            }
+        }); // Ensure this closing brace matches the lambda function
 
     runtimeTime = millis() - previousStatusRuntimeTime;
 
@@ -240,7 +251,11 @@ bool CAN_BUS::send(unsigned long id)
         }
         else if (type == HardwareType::Transciever)
         {
-            /*
+            #if defined (ARDUINO_MICRO)
+                Serial.println("Not available for arduino + transciever");
+            #endif
+            #if defined(ESP32) || defined(ESP32S3)
+            
             CanFrame frame = {0};
             frame.identifier = packet->id;
             frame.extd = packet->typeExtendedId;
@@ -253,7 +268,12 @@ bool CAN_BUS::send(unsigned long id)
             {
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
-            }*/
+            }
+            #endif
+
+            #if defined (ARDUINO_MICRO)
+                Serial.println("Not available for arduino + transciever");
+            #endif
         }
     }
     else
@@ -297,15 +317,20 @@ bool CAN_BUS::sendRequestedRRF(unsigned long id)
 void CAN_BUS::receive()
 {
     previousStatusRuntimeTime = millis();
+    int after;
     if (readBytes() || config.simulating)
     {
+        int mills = millis();
+        DEBUG_PRINTLN((String) "Time to read packet: " + (mills - previousStatusRuntimeTime));
         // Store packet in memory if is not in the IDs set by the filter or if are no ids stored
         if ((filterIDs.empty()) || (std::binary_search(filterIDs.begin(), filterIDs.end(), DataIN.dataRaw.id)))
         {
             // Serial.println("ADDED");
             DataIN.addPacket(DataIN.dataRaw);
         }
-
+        after = millis();
+        DEBUG_PRINTLN((String) "Time to add packet: " + (after - mills));
+        mills = after;
         DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
         //  Respond to RRF if the option is enabled
         if (DataIN.dataRaw.rrf && config.respondToRRF)

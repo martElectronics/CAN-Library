@@ -21,6 +21,7 @@
 #else
 #include "inttypes.h"
 #endif
+#ifdef ESP32 
 #include "driver/twai.h"
 
 
@@ -133,4 +134,5 @@ class TwaiCAN {
 
 extern TwaiCAN ESP32Can;
 
+#endif//ESP32_TWAI_CAN_HPP
 #endif//ESP32_TWAI_CAN_HPP

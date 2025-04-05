@@ -4,6 +4,16 @@
 #include <Arduino.h>
 #include "common.h"
 
+#if defined(ARDUNO_MICRO)
+#include <ArduinoSTL.h>
+#endif
+
+#if defined(ESP32) || (ESP32S3)
+#include <vector>
+    #include <algorithm>
+    #include <functional>
+#endif
+
 class CAN_DATA
 {
 private:

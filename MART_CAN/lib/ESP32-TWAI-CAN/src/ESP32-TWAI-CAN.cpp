@@ -1,5 +1,5 @@
+#if defined(ESP32)
 #include "ESP32-TWAI-CAN.hpp"
-
 
 void TwaiCAN::setSpeed(TwaiSpeed twaiSpeed) {
     if(twaiSpeed < TWAI_SPEED_SIZE) speed = twaiSpeed;
@@ -158,3 +158,4 @@ bool TwaiCAN::end() {
 }
 
 TwaiCAN ESP32Can;
+#endif

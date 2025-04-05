@@ -3,7 +3,7 @@
 #define MARTCAN_H
 
 #include <Arduino.h>
-#include <ArduinoSTL.h>
+
 #include <bitset>
 #include <cstring>
 #include <utility> 
@@ -13,7 +13,18 @@
 #include "CAN_DATA.h"
 #include "common.h"
 #include "MCP2515_Config.h"
-//#include <ESP32-TWAI-CAN.hpp>
+
+
+#if defined (ARDUINO_MICRO)
+    #include <ArduinoSTL.h>
+#endif  
+
+#if defined(ESP32) || defined(ESP32S3)
+    #include <vector>
+    #include <algorithm>
+    #include <functional>
+    #include <ESP32-TWAI-CAN.hpp>
+#endif
 
 #define MCP_SPEED_500 500
 #define MCP_SPEED_1000 1000
@@ -35,6 +46,7 @@ public:
     HardwareType type;
     int error;
     int RX,TX;
+    int timeout;
     struct Config
     {
         bool respondToRRF;            // Automaticaly respond to a RRF
@@ -104,8 +116,9 @@ public:
     ~CAN_BUS() {}
 
     
-    void setupCANHardware(unsigned int speed, uint16_t txQueue = 10, uint16_t rxQueue = 10){
+    void setupCANHardware(unsigned int speed, uint16_t txQueue = 10, uint16_t rxQueue = 10, int timeoutRead = 100){
         error = 0;
+        timeout = timeoutRead;
         //this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if(this->type == HardwareType::Controller){
             if(speed == MCP_SPEED_500){
@@ -133,14 +146,17 @@ public:
                 return;
             }
             _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        }else if(this->type == HardwareType::Transciever){
-           /* //ESP32Can.setPins(RX, TX);
+        }
+        else if(this->type == HardwareType::Transciever){
+            #if defined(ESP32) || defined(ESP32S3)
+            //ESP32Can.setPins(RX, TX);
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
             //**CORREGIR3: El tamaño de la cola debe de ser genérica y configurable por parámetro, podéis usar unos parámetros por defecto como en el caso del constructor
             if(!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, txQueue, rxQueue)){
                 Serial.println("Error Initializing ESP32Can...");
                 error =1;
-        }*/
+        }
+        #endif
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
@@ -154,7 +170,7 @@ public:
         //**3. Otra forma que se os ocurra a vosotros */
         //**Si veis que los constructores que yo implementé en su día os estan fastidiando y queréis usar otros para que sean más compatibles con vuestra lógica los podéis cambiar, no problem */
         
-
+        timeout = 100;
         setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
         config.respondToRRF = true;

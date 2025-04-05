@@ -58,7 +58,7 @@ void loop()
 */
 
 bool flag = false;
-unsigned int speed = 500, speedFactor = 2;
+unsigned int speed = 1000, speedFactor = 2;
 unsigned long tiempoDesdeInicio, tiempoActual = 0;
 
 CAN_BUS* CAN;
@@ -73,6 +73,7 @@ int dataInt2[2] = {0,0};
 void setup(){
    Serial.begin(115200);
    CAN = new CAN_BUS(HardwareType::Controller, speed, 1,10);
+   CAN->timeout = 30;
    if(CAN->error == 1){
       Serial.println("Error Initializing ESP32CAN->..");
    }
@@ -103,7 +104,7 @@ void loop()
 
    bool dataBool16[16] = {1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1};
    short dataShort1[1] = {12}, dataShort2[2] = {12, -1148};
-   int dataInt1[1] = {-3}, dataInt2[2] = {-3, 12567};
+   int dataInt1[1] = {-3}, dataInt2[2] = {-3, 1237};
    float dataFloat1[1] = {3.142592};
    byte dataByte[8] = {1,0,0,0,1,1,1,1};
 
@@ -125,7 +126,6 @@ void loop()
    CAN->setPacket(5, dataByte);
 
    CAN->send();
-
 
    cont++;
 }
