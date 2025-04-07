@@ -28,6 +28,11 @@
 #define ERROR_PRINTLN(x)
 #endif
 
+#define ERROR_LOOP(msg)        \
+  while (true) {                  \
+    Serial.println(msg);          \
+    delay(1000);                  \
+  }
 
 struct CanPacketRawData {
     unsigned long id;

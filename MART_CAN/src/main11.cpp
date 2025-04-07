@@ -85,61 +85,22 @@ void setup(){
 
 void loop()
 {
-   tiempoDesdeInicio = millis();
-   //PRUEBA PARA RECEIVER
-   //Se leen los datos del bus y se guardan en memoria (DataIN)
-   CAN.receive();
-   //Se procesan los primeros 4 bytes del paquete con ID=100 como "int" y se guardan en dataInt1
-   CAN.getPacket(2, h1);
-   CAN.getPacket(3, h2);
-   CAN.getPacket(4, h3);
-   Serial.println("Transciever: ");
-   CAN.printArray(h1);
-   CAN.printArray(h2);
-   CAN.printArray(h3);
-   CAN.printReceivedIds();
-
-
-
-   //Prueba de cambio de velocidad en caliente
-
-   //Cada 100ms se consulta el estado del pulsador mientras se ejecutan las demás tareas
-   /*if(tiempoDesdeInicio - tiempoActual >= 100)
-   {
-      tiempoActual = tiempoDesdeInicio;
-
-      if(checkButton() == LOW && flag == false) // Si está pulsado y no ha sido pulsado antes se cambia la velocidad
-      {
-         CAN.setupCANHardware(speedFactor*speed);
-         flag = true;
-         Serial.print("Se ha cambiado la velocidad: ");
-         Serial.println(speedFactor*speed);
-      }
-      else if(checkButton() == HIGH && flag == true) // Si no está pulsado y se ha cambiado antes la velocidad, se cambia
-      {                                              // el factor para que la siguiente vez alterne la velocidad
-         flag = false;
-         speedFactor = (speedFactor % 2) + 1;
-      }
-   }*/
-   //PRUEBA PARA SEND
-
    bool dataBool16[16] = {1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1};
    short dataShort1[1] = {12}, dataShort2[2] = {12, -1148};
-   int dataInt1[1] = {-3}, dataInt2[2] = {-3, 1567};
+   int32_t dataInt1[1] = {-7}, dataInt2[2] = {-3, 1567};
    float dataFloat1[1] = {3.142592};
    byte dataByte[8] = {1,0,0,0,1,1,1,1};
 
-   // Se procesan los 8 bytes de dataInt2 como "int" (de 4 en 4) y se crea un paquete de ID=101 con esos datos
-   CAN.setPacket(5, dataByte);
+   CAN.receive();
+  
+   CAN.getPacket(2, h1,8);
+   CAN.printReceivedIds();
 
-   // Se procesan los 4 bytes de dataShort2 como "short"(de 2 en 2), los 4 bytes de dataInt1 como "int" y se crea
-   // un paquete de ID=102 con esos datos
-   CAN.setPacket(6, dataByte);
 
-   // Se crea un paquete que contiene información de tipo "bool", "float" y "short"
-   CAN.setPacket(7, dataByte);
+   CAN.setPacket(100,dataInt2,1);
+   CAN.setPacket(101,dataInt2,2);
+   CAN.setPacket(102,dataInt1,1);
+
 
    CAN.send();
-
-   cont++;
 }

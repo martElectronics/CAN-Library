@@ -461,52 +461,52 @@ void CAN_BUS::setCANStatusData()
     DEBUG_PRINTLN("Offset: ");
     DEBUG_PRINTLN(statusPacketOffset);
 
-    this->setPacket(statusPacketOffset, d0);
-    this->setPacket(statusPacketOffset + 1, d1);
-    this->setPacket(statusPacketOffset + 2, d2);
+    // this->setPacket(statusPacketOffset, d0);
+    // this->setPacket(statusPacketOffset + 1, d1);
+    // this->setPacket(statusPacketOffset + 2, d2);
 }
 
 void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[], bool &ok)
 {
 
-    int d0[2];
-    int d1[2];
-    int d2[2];
-    if (_nodeid > 0)
-    {
-        unsigned long _statusPacketOffset = STATUS_START_MASTER_ID + (_nodeid - 1) * STATUS_NUM_PAQUETS;
-        if (_nodeid != nodeID)
-        {
+    // int d0[2];
+    // int d1[2];
+    // int d2[2];
+    // if (_nodeid > 0)
+    // {
+    //     unsigned long _statusPacketOffset = STATUS_START_MASTER_ID + (_nodeid - 1) * STATUS_NUM_PAQUETS;
+    //     if (_nodeid != nodeID)
+    //     {
 
-            DEBUG_PRINTLN((String) "ID " + _nodeid + "d0 data");
-            ok = getPacket(_statusPacketOffset, d0);
-            if (ok)
-            {
-                getPacket(_statusPacketOffset + 1, d1);
-                getPacket(_statusPacketOffset + 2, d2);
-            }
-        }
-        else
-        {
-            d0[0] = runtimeTime;
-            d0[1] = numTxPaqError;
-            d1[0] = numRXPaqOK;
-            d1[1] = numTXPaqOK;
-            printArray(d0);
-            ok = true;
-        }
-    }
-    else
-    {
-        ok = false;
-    }
+    //         DEBUG_PRINTLN((String) "ID " + _nodeid + "d0 data");
+    //         ok = getPacket(_statusPacketOffset, d0);
+    //         if (ok)
+    //         {
+    //             getPacket(_statusPacketOffset + 1, d1);
+    //             getPacket(_statusPacketOffset + 2, d2);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         d0[0] = runtimeTime;
+    //         d0[1] = numTxPaqError;
+    //         d1[0] = numRXPaqOK;
+    //         d1[1] = numTXPaqOK;
+    //         printArray(d0);
+    //         ok = true;
+    //     }
+    // }
+    // else
+    // {
+    //     ok = false;
+    // }
 
-    _d0[0] = d0[0];
-    _d0[1] = d0[1];
-    _d1[0] = d1[0];
-    _d1[1] = d1[1];
-    _d2[0] = d2[0];
-    _d2[1] = d2[0];
+    // _d0[0] = d0[0];
+    // _d0[1] = d0[1];
+    // _d1[0] = d1[0];
+    // _d1[1] = d1[1];
+    // _d2[0] = d2[0];
+    // _d2[1] = d2[0];
 }
 bool CAN_BUS::getCANStatusData(unsigned _nodeid, int d[])
 {
