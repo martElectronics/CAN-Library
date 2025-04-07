@@ -87,7 +87,7 @@ The MART_CAN library is an Arduino library designed to facilitate CAN (Controlle
 > ESP-S3
       Change the above one with the following
 
-       board = esp32-s3-devkitc
+       board = esp32-s3-devkitc-1
        build_flags = ${env.build_flags} 
                      -D ESP32S3
 
