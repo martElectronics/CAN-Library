@@ -227,7 +227,7 @@ public:
             // Copy the data
             if (data != nullptr && dataSize > 0)
             {
-                if (cmdConversionToLittleEndian)
+                if (!cmdConversionToBigEndian)
                 {
                     std::memcpy(outputArray, data, dataBytes);
                 }
@@ -288,7 +288,7 @@ public:
                 if (data != nullptr && dataSize > 0)
                 {
                     // Extract the data
-                    if (cmdConversionToLittleEndian)
+                    if (!cmdConversionToLittleEndian)
                     {
                         std::memcpy(data, packet->bytes, dataBytes);
                     }
@@ -319,12 +319,13 @@ public:
                     ok = false;
                 }
             }
+            else
+            {
+                ERROR_PRINTLN("Error: getPacket No matching packet found.");
+                ok = false;
+            }
         }
-        else
-        {
-            ERROR_PRINTLN("Error: getPacket No matching packet found.");
-            ok = false;
-        }
+
         return (ok || config.simulating);
     }
 
