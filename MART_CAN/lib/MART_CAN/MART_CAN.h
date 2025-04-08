@@ -87,27 +87,6 @@ public:
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
         config.sendStatusData = false;
-
-        // unsigned long int rIDS[STATUS_NUM_IDS];
-        // for(unsigned long i=0;i<STATUS_NUM_IDS;i++)
-        // {
-        //     rIDS[i]=STATUS_START_MASTER_ID+i;
-        // }
-        // DataIN.setRemovableIds(rIDS,STATUS_NUM_IDS);
-
-        // statusPacketOffset=STATUS_START_MASTER_ID+(_nodeID-1)*STATUS_NUM_PAQUETS;
-        // for(unsigned i=0;i<STATUS_NUM_PAQUETS;i++)
-        // {
-        //     //Sets CANStatusPackets timer
-        //     setPacketTimer(statusPacketOffset+i,STATUS_DATA_TIME_CALC);
-
-        //     //Store the CANStatusPackets ID's in filterIDs so they can be read by the other ESP's
-        //     filterIDs.push_back(statusPacketOffset+i);
-        // }
-        previousStatusIntervalTime = millis();
-        previousStatusRuntimeTime = millis();
-        intervalTime = STATUS_DATA_TIME_CALC;
-        nodeID = _nodeID;
     }
 
     // Destructor
@@ -208,35 +187,6 @@ public:
     // Receives data packets and stores them in DataIN
     void receive();
 
-    // Retrieves a packet with a specific CAN ID and unpacks its data
-    // template <typename... Args>
-    // bool getPacket(unsigned long canId, Args &...args)
-    // {
-    //     bool ok = true;
-    //     std::size_t size = calculateTotalSize(args...);
-    //     if (size > 64)
-    //     {
-    //         ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >64");
-    //         ok = false;
-    //     }
-
-    //     else
-    //     {
-    //         const CanPacketRawData *packet = DataIN.getPacketById(canId);
-    //         if (packet != nullptr)
-    //         {
-    //             unpackCANMessage(packet->bytes, args...);
-    //             ok = true;
-    //         }
-    //         else
-    //         {
-    //             ERROR_PRINTLN("Error: No matching packet found.");
-    //             ok = false;
-    //         }
-    //     }
-    //     return (ok || config.simulating);
-    // }
-
     template <typename T>
     std::size_t calculateTotalSize(T &arg)
     {
@@ -249,65 +199,9 @@ public:
         return arraySizeInBits(first) + calculateTotalSize(rest...);
     }
 
-    // Retrieves the last received packet and unpacks its data
-    // template <typename... Args>
-    // bool getPacket(Args &...args)
-    // {
-    //     bool ok = true;
-    //     if (DataIN.lastAddedPacket != nullptr)
-    //     {
-    //         unpackCANMessage(DataIN.lastAddedPacket->bytes, args...);
-    //         ok = true;
-    //     }
-    //     else
-    //     {
-    //         ERROR_PRINTLN("Error: No packet has been added yet.");
-    //         ok = false;
-    //     }
-    //     return (ok || config.simulating);
-    // }
-
-    // Packs provided data into a CAN packet and stores it in DataOUT
-    // template <typename... Args>
-    // bool setPacket(unsigned long canId, Args &&...args)
-    // {
-    //     bool ok = true;
-    //     std::size_t size = calculateTotalSize(args...);
-    //     if (size > 64)
-    //     {
-    //         ERROR_PRINTLN((String) "Error!, packetID: " + canId + " size = " + size + " >8");
-    //         ok = false;
-    //     }
-    //     else
-    //     {
-
-    //         DataOUT.dataRaw.size = 8;
-    //         uint8_t *outputArray = DataOUT.dataRaw.bytes;
-    //         std::fill_n(outputArray, 8, 0x00); // Initialize with 0x00
-    //         size_t offset = 0;
-    //         packArgumentsRecursive(outputArray, offset, args...);
-    //         DataOUT.dataRaw.id = canId;
-
-    //         DataOUT.dataRaw.typeExtendedId = DataOUT.dataRaw.id > 0x7FF;
-    //         DataOUT.dataRaw.rrf = false;
-    //         // Checks if there is a RRF rule stored involving that packet. If so, make
-    //         // WaitForRRF true so send() doesn't send that package unless a rrf is received
-    //         if (searchOutId(canId))
-    //         {
-    //             DataOUT.dataRaw.WaitForRRF = true;
-    //         }
-    //         else
-    //         {
-    //             DataOUT.dataRaw.WaitForRRF = false;
-    //         }
-    //         DataOUT.addPacket(DataOUT.dataRaw);
-    //     }
-    //     return ok;
-    // }
-
     //*** NEW SETPACKET AND GETPACKET METHODS */
     template <typename T>
-    bool setPacket(uint32_t canId, const T *data, size_t dataSize)
+    bool setPacket(uint32_t canId, const T *data, size_t dataSize, bool cmdConversionToBigEndian = true)
     {
         bool ok = true;
         // Calculate total size needed
@@ -333,13 +227,33 @@ public:
             // Copy the data
             if (data != nullptr && dataSize > 0)
             {
-                std::memcpy(outputArray, data, dataBytes);
+                if (cmdConversionToLittleEndian)
+                {
+                    std::memcpy(outputArray, data, dataBytes);
+                }
+                else
+                {
+                    for (size_t i = 0; i < dataSize; ++i)
+                    {
+                        T value = data[i];
+                        size_t elementSize = sizeof(T);
+
+                        // Calculate starting position for this element in the output array
+                        size_t startPos = i * elementSize;
+
+                        // Copy bytes in reverse order (little endian to big endian)
+                        for (size_t j = 0; j < elementSize; ++j)
+                        {
+                            outputArray[startPos + j] = static_cast<byte>((value >> ((elementSize - 1 - j) * 8)) & 0xFF);
+                        }
+                    }
+                }
                 DataOUT.addPacket(DataOUT.dataRaw);
             }
             else
             {
                 ERROR_LOOP("ERROR, SETPACKET EMPTY");
-                ok=false;
+                ok = false;
             }
         }
         return ok;
@@ -354,7 +268,7 @@ public:
      * @throws std::overflow_error If trying to extract more data than available
      */
     template <typename T>
-    bool getPacket(uint32_t canId, T *data, size_t dataSize)
+    bool getPacket(uint32_t canId, T *data, size_t dataSize, bool cmdConversionToLittleEndian = true)
     {
         bool ok = true;
         // Calculate size
@@ -371,17 +285,45 @@ public:
             const CanPacketRawData *packet = DataIN.getPacketById(canId);
             if (packet != nullptr)
             {
-                // Extract the data
                 if (data != nullptr && dataSize > 0)
                 {
-                    std::memcpy(data, packet->bytes, dataBytes);
+                    // Extract the data
+                    if (cmdConversionToLittleEndian)
+                    {
+                        std::memcpy(data, packet->bytes, dataBytes);
+                    }
+
+                    else
+                    {
+                        for (size_t i = 0; i < dataSize; ++i)
+                        {
+                            T value = 0;
+                            size_t elementSize = sizeof(T);
+
+                            // Calculate starting position for this element in the input array
+                            size_t startPos = i * elementSize;
+
+                            // Convert big endian to little endian by reading bytes in reverse order
+                            for (size_t j = 0; j < elementSize; ++j)
+                            {
+                                value = (value << 8) | data[startPos + j];
+                            }
+
+                            data[i] = value;
+                        }
+                    }
+                }
+                else
+                {
+                    ERROR_PRINTLN("Error: getPacket Empty array");
+                    ok = false;
                 }
             }
-            else
-            {
-                ERROR_PRINTLN("Error: No matching packet found.");
-                ok = false;
-            }
+        }
+        else
+        {
+            ERROR_PRINTLN("Error: getPacket No matching packet found.");
+            ok = false;
         }
         return (ok || config.simulating);
     }
@@ -467,8 +409,8 @@ public:
     void printReceivedIds();
 
     //** CAN STATUS DATA**//
-     void setCANStatusData();
-     void getCANStatusData();
+    void setCANStatusData();
+    void getCANStatusData();
 
     //** CAN BUS STATUS DATA **//
     unsigned nodeID, statusPacketOffset;                                                             // IDs
@@ -505,7 +447,7 @@ private:
     void ChangeSpeed(unsigned int speed){
         ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
     }
-*/
+    */
     // Method to print all RRFIds
     void printRRFIds()
     {
@@ -528,9 +470,6 @@ private:
             Serial.println(); // New line after printing OUTRRFid
         }
     }
-
-   
-   
 };
 
 #endif
