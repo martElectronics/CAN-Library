@@ -53,6 +53,7 @@ public:
                                              });
             auto insertedIt = packets.insert(insertIt, packet); // Insert and get iterator to the new element
             lastAddedPacket = &(*insertedIt);                   // Update the pointer to the last added packet
+            DEBUG_PRINTLN("Paquete anadido");
         }
     }
 

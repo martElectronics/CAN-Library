@@ -42,11 +42,11 @@ bool CAN_BUS::readBytes()
     }
     else if (type == HardwareType::Transciever)
     {
-        #if defined (ARDUINO_MICRO)
-                Serial.println("Not available for arduino + transciever");
-            #endif
-        #if defined(ESP32) || defined(ESP32S3)
-        
+#if defined(ARDUINO_MICRO)
+        Serial.println("Not available for arduino + transciever");
+#endif
+#if defined(ESP32) || defined(ESP32S3)
+
         CanFrame frame = {0};
         if (ESP32Can.readFrame(frame) && !config.simulating)
         {
@@ -60,7 +60,7 @@ bool CAN_BUS::readBytes()
 
             ok = true;
         }
-        #endif
+#endif
     }
     return (ok || config.simulating);
 }
@@ -173,10 +173,10 @@ bool CAN_BUS::send()
             }
             }
             else if(type == HardwareType::Transciever){
-                #if defined (ARDUINO_MICRO)
+#if defined(ARDUINO_MICRO)
                 Serial.println("Not available for arduino + transciever");
-            #endif
-                #if defined(ESP32) || defined(ESP32S3)
+#endif
+#if defined(ESP32) || defined(ESP32S3)
                 
                 CanFrame frame = {0};
                 frame.identifier = packet.id;
@@ -186,7 +186,7 @@ bool CAN_BUS::send()
                 {
                     frame.data[i] = packet.bytes[i];
                 }
-                if (!ESP32Can.writeFrame(frame))
+                if (!ESP32Can.writeFrame(frame,0))
                 {
                     ERROR_PRINTLN("Error sending message");
                     success = false; // Mark failure but continue sending the rest
@@ -205,13 +205,12 @@ bool CAN_BUS::send()
                     }
                     numTXPaqOK++;
                 }
-                #endif
+#endif
             }
             }
             else if (packet.WaitForRRF) {
                 DEBUG_PRINTLN((String)"Packet not sent because it is waiting for a RRF ID = " + packet.id);
-            }
-        }); // Ensure this closing brace matches the lambda function
+            } }); // Ensure this closing brace matches the lambda function
 
     runtimeTime = millis() - previousStatusRuntimeTime;
 
@@ -251,11 +250,11 @@ bool CAN_BUS::send(unsigned long id)
         }
         else if (type == HardwareType::Transciever)
         {
-            #if defined (ARDUINO_MICRO)
-                Serial.println("Not available for arduino + transciever");
-            #endif
-            #if defined(ESP32) || defined(ESP32S3)
-            
+#if defined(ARDUINO_MICRO)
+            Serial.println("Not available for arduino + transciever");
+#endif
+#if defined(ESP32) || defined(ESP32S3)
+
             CanFrame frame = {0};
             frame.identifier = packet->id;
             frame.extd = packet->typeExtendedId;
@@ -269,11 +268,11 @@ bool CAN_BUS::send(unsigned long id)
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
             }
-            #endif
+#endif
 
-            #if defined (ARDUINO_MICRO)
-                Serial.println("Not available for arduino + transciever");
-            #endif
+#if defined(ARDUINO_MICRO)
+            Serial.println("Not available for arduino + transciever");
+#endif
         }
     }
     else
@@ -466,84 +465,65 @@ void CAN_BUS::setCANStatusData()
     // this->setPacket(statusPacketOffset + 2, d2);
 }
 
-void CAN_BUS::getCANStatusData(unsigned _nodeid, int _d0[], int _d1[], int _d2[], bool &ok)
+void CAN_BUS::getCANStatusData()
 {
-
-    // int d0[2];
-    // int d1[2];
-    // int d2[2];
-    // if (_nodeid > 0)
-    // {
-    //     unsigned long _statusPacketOffset = STATUS_START_MASTER_ID + (_nodeid - 1) * STATUS_NUM_PAQUETS;
-    //     if (_nodeid != nodeID)
-    //     {
-
-    //         DEBUG_PRINTLN((String) "ID " + _nodeid + "d0 data");
-    //         ok = getPacket(_statusPacketOffset, d0);
-    //         if (ok)
-    //         {
-    //             getPacket(_statusPacketOffset + 1, d1);
-    //             getPacket(_statusPacketOffset + 2, d2);
-    //         }
-    //     }
-    //     else
-    //     {
-    //         d0[0] = runtimeTime;
-    //         d0[1] = numTxPaqError;
-    //         d1[0] = numRXPaqOK;
-    //         d1[1] = numTXPaqOK;
-    //         printArray(d0);
-    //         ok = true;
-    //     }
-    // }
-    // else
-    // {
-    //     ok = false;
-    // }
-
-    // _d0[0] = d0[0];
-    // _d0[1] = d0[1];
-    // _d1[0] = d1[0];
-    // _d1[1] = d1[1];
-    // _d2[0] = d2[0];
-    // _d2[1] = d2[0];
-}
-bool CAN_BUS::getCANStatusData(unsigned _nodeid, int d[])
-{
-    bool ok;
-    int d0[2]; // runtimeTime,numTxPaqError
-    int d1[2]; // numRXPaqOK,numTXPaqOK
-    int d2[2];
-    getCANStatusData(_nodeid, d0, d1, d2, ok);
-    d[0] = d0[0];
-    d[1] = d0[1];
-    d[2] = d1[0];
-    d[3] = d1[1];
-    d[4] = d2[0];
-    d[5] = d2[1];
-    return ok;
-}
-
-void CAN_BUS::printStatusData(unsigned _nodeID)
-{
-    bool ok;
-    int d0[2]; // runtimeTime,numTxPaqError
-    int d1[2]; // numRXPaqOK,numTXPaqOK
-    int d2[2];
-    getCANStatusData(_nodeID, d0, d1, d2, ok);
-    if (!ok)
+    static uint64_t tAux = millis();
+    if ((millis() - tAux) >= 1000)
     {
-        // Serial.println((String) "Status data for nodeId: " + _nodeID + "not found");
-    }
-    else
-    {
-        Serial.println((String) "NodeId: " + _nodeID + " data:");
-        Serial.println((String) "runtimeTime: " + d0[0]);
-        Serial.println((String) "numTxPaqError: " + d0[1]);
-        Serial.println((String) "numRXPaqOK: " + d1[0]);
-        Serial.println((String) "numTXPaqOK: " + d1[1]);
+        uint32_t alerts;
+        twai_read_alerts(&alerts, 0); // Non-blocking read
+
+        if (alerts & TWAI_ALERT_BUS_OFF)
+        {
+            Serial.println("[ERROR] Bus-off state detected! Attempting recovery...");
+            twai_initiate_recovery(); // Auto-recover from bus-off
+        }
+        if (alerts & TWAI_ALERT_ERR_PASS)
+        {
+            Serial.println("[WARNING] Controller is in error-passive state.");
+        }
+        if (alerts & TWAI_ALERT_TX_FAILED)
+        {
+            Serial.println("[ERROR] Transmission failed (no ACK). Check receiver.");
+        }
+        if (alerts & TWAI_ALERT_TX_RETRIED)
+        {
+            Serial.println("[ERROR] TX queue full! Reduce send rate or increase queue size.");
+        }
+
+        twai_status_info_t status;
+        twai_get_status_info(&status);
+
+        // Print controller state
+        Serial.print("TWAI State: ");
+        switch (status.state)
+        {
+        case TWAI_STATE_RUNNING:
+            Serial.println("Running");
+            break;
+        case TWAI_STATE_BUS_OFF:
+            Serial.println("Bus-Off");
+            break;
+        case TWAI_STATE_STOPPED:
+            Serial.println("Stopped");
+            break;
+        case TWAI_STATE_RECOVERING:
+            Serial.println("Recovering");
+            break;
+        default:
+            Serial.println("Unknown");
+        }
+
+        // Print error counters
+        Serial.printf("TX Errors: %d, RX Errors: %d\n",
+                      status.tx_error_counter,
+                      status.rx_error_counter);
+
+    Serial.println();
+    tAux=millis();
     }
 }
+
 void CAN_BUS::printReceivedIds()
 {
     DataIN.printAllPacketsIDs();
