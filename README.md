@@ -1,32 +1,45 @@
-# CAN_Library
-MART CAN Library
+<h1> CAN_Library </h1>
+<h2>MART CAN Library</h2>
 
-The MART_CAN library is an Arduino library designed to facilitate CAN (Controller Area Network) communication and data packet storage. It simplifies the process of sending and receiving CAN messages, as well as handling different data types in your Arduino projects.
+- The MART_CAN library is an Arduino library designed to facilitate CAN (Controller Area Network) communication and data packet storage. It simplifies the process of sending and receiving CAN messages, as well as handling different data types in your Arduino projects.
 
 # Features
--CAN_BUS Class: Central component for managing CAN communication using an MCP2515 CAN controller. It includes functions for initialization, sending data, receiving data, packet handling, data packing, and data unpacking.
 
--CAN_DATA Class: Manages the storage and organization of CAN data packets. Features include packet storage, adding packets, removing packets, retrieving packets by ID, iterating over packets, and more.
+CAN_BUS Class:<br>
+> - Central component for managing CAN communication using an MCP2515 CAN controller. It includes functions for initialization, sending data, receiving data, packet handling, data packing, and data unpacking.
 
--Integration with MCP_CAN Library: Compatible with the MCP_CAN library, making it suitable for a wide range of Arduino boards and CAN setups.
+  CAN_DATA Class: <br>
+>- Manages the storage and organization of CAN data packets. Features include packet storage, adding packets, removing packets, retrieving packets by ID, iterating over packets, and more.
 
--Data Packet Management: Simplify the handling of CAN data packets with a well-structured data storage system. Store, retrieve, and manipulate CAN packets effortlessly.
+Integration with MCP_CAN Library:
+>- Compatible with the MCP_CAN library, making it suitable for a wide range of Arduino boards and CAN setups.
 
--Multiple Data Types: Support for various data types, including integers, floats, and boolean arrays, ensures compatibility with a wide range of data formats.
+Data Packet Management: 
+>- Simplify the handling of CAN data packets with a well-structured data storage system. Store, retrieve, and manipulate CAN packets effortlessly.
 
--Packing and Unpacking: Efficiently pack and unpack data into/from CAN packets, making it simple to work with complex data structures.
+Multiple Data Types: 
+>- Support for various data types, including integers, floats, and boolean arrays, ensures compatibility with a wide range of data formats.
+
+Packing and Unpacking:
+>- Efficiently pack and unpack data into/from CAN packets, making it simple to work with complex data structures.
 
 # Getting Started
--Create a new PlatformIO project, then add the /lib and platformio.ini files to the project. Please add /src examples as needed.
 
--For uploading, select the <example>.cpp environment and hit the upload arrow button
-
-<img width="823" alt="Screenshot 2023-12-25 at 18 13 10" src="https://github.com/martElectronics/can-library/assets/148893488/51bbe785-042d-48f7-be75-f78f2ec8f644">
+>[!Important]
+>
+>-Create a new PlatformIO project, then add the /lib and platformio.ini files to the project. Please add /src examples as needed.
+>
+>-For uploading, select the <example>.cpp environment and hit the upload arrow button
+>
+>
+><img width="823" alt="Screenshot 2023-12-25 at 18 13 10" src="https://github.com/martElectronics/can-library/assets/148893488/51bbe785-042d-48f7-be75-f78f2ec8f644">
 
 # Implementation on code
 <h2>Constructor</h2>
-<span>- Besides the other constructors, the recommended one is:
-  -CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 10, uint16_t rxQueue=10)
+
+- Besides the other constructors, the recommended one is:
+>
+  <h3>CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 10, uint16_t rxQueue=10) </h3>
   
     -type -> Enum for chossing between Transciever or Controller Modules (Transciver Not supported for Arduino)
     -speed -> Enum defined CAN_SPEED_500, CAN_SPEED_1000 for KBs speed on bus
