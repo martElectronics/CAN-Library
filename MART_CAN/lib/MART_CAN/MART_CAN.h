@@ -15,7 +15,7 @@
 #include "MCP2515_Config.h"
 
 
-#if defined (ARDUINO_MICRO)
+#if defined (ARDUINO_CUSTOM)
     #include <ArduinoSTL.h>
 #endif  
 

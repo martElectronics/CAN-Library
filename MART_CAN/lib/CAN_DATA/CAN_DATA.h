@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "common.h"
 
-#if defined(ARDUNO_MICRO)
+#if defined(ARDUINO_CUSTOM)
 #include <ArduinoSTL.h>
 #endif
 

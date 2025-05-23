@@ -42,7 +42,7 @@ bool CAN_BUS::readBytes()
     }
     else if (type == HardwareType::Transciever)
     {
-        #if defined (ARDUINO_MICRO)
+        #if defined (ARDUINO_CUSTOM)
                 Serial.println("Not available for arduino + transciever");
             #endif
         #if defined(ESP32) || defined(ESP32S3)
@@ -173,7 +173,7 @@ bool CAN_BUS::send()
             }
             }
             else if(type == HardwareType::Transciever){
-                #if defined (ARDUINO_MICRO)
+                #if defined (ARDUINO_CUSTOM)
                 Serial.println("Not available for arduino + transciever");
             #endif
                 #if defined(ESP32) || defined(ESP32S3)
@@ -251,7 +251,7 @@ bool CAN_BUS::send(unsigned long id)
         }
         else if (type == HardwareType::Transciever)
         {
-            #if defined (ARDUINO_MICRO)
+            #if defined (ARDUINO_CUSTOM)
                 Serial.println("Not available for arduino + transciever");
             #endif
             #if defined(ESP32) || defined(ESP32S3)
@@ -271,7 +271,7 @@ bool CAN_BUS::send(unsigned long id)
             }
             #endif
 
-            #if defined (ARDUINO_MICRO)
+            #if defined (ARDUINO_CUSTOM)
                 Serial.println("Not available for arduino + transciever");
             #endif
         }
