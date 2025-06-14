@@ -169,7 +169,8 @@ public:
         //**2. Crear dos constructores que inicialicen un hardware u otro (con 4 argumentos para el controller y 6 para el transceiver) */
         //**3. Otra forma que se os ocurra a vosotros */
         //**Si veis que los constructores que yo implementé en su día os estan fastidiando y queréis usar otros para que sean más compatibles con vuestra lógica los podéis cambiar, no problem */
-        
+        Serial.print("type: ");
+        Serial.println(static_cast<int>(type));
         timeout = 100;
         setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
