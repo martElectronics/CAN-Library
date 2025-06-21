@@ -467,6 +467,7 @@ void CAN_BUS::setCANStatusData()
 
 void CAN_BUS::getCANStatusData()
 {
+    #if defined(ESP32) || defined(ESP32S3)
     static uint64_t tAux = millis();
     if ((millis() - tAux) >= 1000)
     {
@@ -522,6 +523,7 @@ void CAN_BUS::getCANStatusData()
     Serial.println();
     tAux=millis();
     }
+    #endif
 }
 
 void CAN_BUS::printReceivedIds()
