@@ -96,8 +96,8 @@ class TwaiCAN {
                     twai_timing_config_t*  tConfig = nullptr);
     
     // Pass frame either by reference or pointer; timeout in ms, you can pass 0 for non blocking
-    inline bool IRAM_ATTR readFrame(CanFrame& frame, uint32_t timeout = 1000) { return readFrame(&frame, timeout); }
-    inline bool IRAM_ATTR readFrame(CanFrame* frame, uint32_t timeout = 1000) {
+    inline bool IRAM_ATTR readFrame(CanFrame& frame, uint32_t timeout = 0) { return readFrame(&frame, timeout); }
+    inline bool IRAM_ATTR readFrame(CanFrame* frame, uint32_t timeout = 0) {
         bool ret = false;
         if((frame) && twai_receive(frame, pdMS_TO_TICKS(timeout)) == ESP_OK) {
             LOG_TWAI_RX("Frame received %03X", frame->identifier);
