@@ -306,7 +306,7 @@ public:
                             // Convert big endian to little endian by reading bytes in reverse order
                             for (size_t j = 0; j < elementSize; ++j)
                             {
-                                value = (value << 8) | data[startPos + j];
+                                value = (value << 8) | packet->bytes[startPos + j];
                             }
 
                             data[i] = value;
