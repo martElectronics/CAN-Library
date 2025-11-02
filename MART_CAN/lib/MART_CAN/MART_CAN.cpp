@@ -85,6 +85,7 @@ bool CAN_BUS::writeBytes()
     //     ok = false;
     // }
     // return (ok || config.simulating);
+    return 0;
 }
 
 /**
