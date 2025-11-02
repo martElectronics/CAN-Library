@@ -8,11 +8,9 @@
 #include <cstring>
 #include <utility>
 
-// #include <optional>
-#include "mcp_can.h"
+
 #include "CAN_DATA.h"
 #include "common.h"
-#include "MCP2515_Config.h"
 
 #if defined(ARDUINO_MICRO)
 #include <ArduinoSTL.h>
@@ -38,7 +36,6 @@ class CAN_BUS
 
 public:
     // CONVERTER converter;
-    MCP_CAN _CAN;
     CAN_DATA DataIN, DataOUT;
 
     HardwareType type;
@@ -56,38 +53,38 @@ public:
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
 
-    CAN_BUS(int pinCs) : _CAN(pinCs)
-    {
-        if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-            Serial.println("MCP2515 Initialized Successfully!");
-        else
-            Serial.println("Error Initializing MCP2515...");
-        _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+    // CAN_BUS(int pinCs) : _CAN(pinCs)
+    // {
+    //     // if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+    //     //     Serial.println("MCP2515 Initialized Successfully!");
+    //     // else
+    //     //     Serial.println("Error Initializing MCP2515...");
+    //     // _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
 
-        // Default configuration
-        config.respondToRRF = true;
-        config.autoRemoveRRFPacket = true;
-        config.simulating = false;
-        config.autoRemoveStoredFilters = true;
-        config.sendStatusData = false;
-    }
+    //     // // Default configuration
+    //     // config.respondToRRF = true;
+    //     // config.autoRemoveRRFPacket = true;
+    //     // config.simulating = false;
+    //     // config.autoRemoveStoredFilters = true;
+    //     // config.sendStatusData = false;
+    // }
 
     // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
-    CAN_BUS(int pinCs, int _nodeID) : _CAN(pinCs)
-    {
-        if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-            Serial.println("MCP2515 Initialized Successfully!");
-        else
-            Serial.println("Error Initializing MCP2515...");
-        _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+    // CAN_BUS(int pinCs, int _nodeID) : _CAN(pinCs)
+    // {
+    //     // if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+    //     //     Serial.println("MCP2515 Initialized Successfully!");
+    //     // else
+    //     //     Serial.println("Error Initializing MCP2515...");
+    //     // _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
 
-        // Default configuration
-        config.respondToRRF = true;
-        config.autoRemoveRRFPacket = true;
-        config.simulating = false;
-        config.autoRemoveStoredFilters = true;
-        config.sendStatusData = false;
-    }
+    //     // // Default configuration
+    //     // config.respondToRRF = true;
+    //     // config.autoRemoveRRFPacket = true;
+    //     // config.simulating = false;
+    //     // config.autoRemoveStoredFilters = true;
+    //     // config.sendStatusData = false;
+    // }
 
     // Destructor
     ~CAN_BUS() {}
@@ -99,40 +96,40 @@ public:
         // this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
         if (this->type == HardwareType::Controller)
         {
-            if (speed == MCP_SPEED_500)
-            {
-                if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
-                {
-                    Serial.println("MCP2515 Initialized Successfully!");
-                }
-                else
-                {
-                    Serial.println("Error Initializing MCP2515...");
-                    error = 1;
-                    return;
-                }
-                _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-            }
-            else if (speed == MCP_SPEED_1000)
-            {
-                if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-                {
-                    Serial.println("MCP2515 Initialized Successfully!");
-                }
-                else
-                {
-                    Serial.println("Error Initializing MCP2515...");
-                    error = 1;
-                    return;
-                }
-            }
-            else
-            {
-                Serial.println("Error Initializing MCP2515 INVALID SPEED...");
-                error = 1;
-                return;
-            }
-            _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+            // if (speed == MCP_SPEED_500)
+            // {
+            //     if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
+            //     {
+            //         Serial.println("MCP2515 Initialized Successfully!");
+            //     }
+            //     else
+            //     {
+            //         Serial.println("Error Initializing MCP2515...");
+            //         error = 1;
+            //         return;
+            //     }
+            //     _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
+            // }
+            // else if (speed == MCP_SPEED_1000)
+            // {
+            //     if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
+            //     {
+            //         Serial.println("MCP2515 Initialized Successfully!");
+            //     }
+            //     else
+            //     {
+            //         Serial.println("Error Initializing MCP2515...");
+            //         error = 1;
+            //         return;
+            //     }
+            // }
+            // else
+            // {
+            //     Serial.println("Error Initializing MCP2515 INVALID SPEED...");
+            //     error = 1;
+            //     return;
+            // }
+            // _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
         }
         else if (this->type == HardwareType::Transciever)
         {
@@ -433,7 +430,6 @@ private:
 
     std::vector<RRFIds> rrfIdsList;       // Vector holding INRRFid and OUTRRFid vectors
     std::vector<unsigned long> filterIDs; // Vector holding INRRFid and OUTRRFid vectors
-    MCP2515Configurator configurator;
 
     bool readBytes();
     bool writeBytes();

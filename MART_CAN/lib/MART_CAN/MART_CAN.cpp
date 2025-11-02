@@ -13,32 +13,32 @@ bool CAN_BUS::readBytes()
     bool ok = false;
     if (type == HardwareType::Controller)
     {
-        if (!digitalRead(_CAN.pinINT) && !config.simulating)
-        {
-            byte rxBuf[8];
-            _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
-            if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
-                DataIN.dataRaw.typeExtendedId = true;
-            else
-                DataIN.dataRaw.typeExtendedId = false;
+        // if (!digitalRead(_CAN.pinINT) && !config.simulating)
+        // {
+        //     // byte rxBuf[8];
+        //     // _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
+        //     // if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
+        //     //     DataIN.dataRaw.typeExtendedId = true;
+        //     // else
+        //     //     DataIN.dataRaw.typeExtendedId = false;
 
-            if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
-            {
-                unsigned long mask = ~(1UL << 30);
-                // Clear the bit at bitPosition
-                DataIN.dataRaw.id &= mask;
-                DataIN.dataRaw.rrf = true;
-                DEBUG_PRINTLN("Received RRF");
-            }
-            else
-                DataIN.dataRaw.rrf = false;
+        //     // if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
+        //     // {
+        //     //     unsigned long mask = ~(1UL << 30);
+        //     //     // Clear the bit at bitPosition
+        //     //     DataIN.dataRaw.id &= mask;
+        //     //     DataIN.dataRaw.rrf = true;
+        //     //     DEBUG_PRINTLN("Received RRF");
+        //     // }
+        //     // else
+        //     //     DataIN.dataRaw.rrf = false;
 
-            ok = true;
-        }
-        else
-        {
-            ok = false;
-        }
+        //     // ok = true;
+        // }
+        // else
+        // {
+        //     ok = false;
+        // }
     }
     else if (type == HardwareType::Transciever)
     {
@@ -74,17 +74,17 @@ bool CAN_BUS::readBytes()
  */
 bool CAN_BUS::writeBytes()
 {
-    bool ok;
-    byte sndStat = _CAN.sendMsgBuf(DataOUT.dataRaw.id, DataOUT.dataRaw.typeExtendedId, 8, DataOUT.dataRaw.bytes);
-    if (sndStat == CAN_OK)
-    {
-        ok = true;
-    }
-    else
-    {
-        ok = false;
-    }
-    return (ok || config.simulating);
+    // bool ok;
+    // byte sndStat = _CAN.sendMsgBuf(DataOUT.dataRaw.id, DataOUT.dataRaw.typeExtendedId, 8, DataOUT.dataRaw.bytes);
+    // if (sndStat == CAN_OK)
+    // {
+    //     ok = true;
+    // }
+    // else
+    // {
+    //     ok = false;
+    // }
+    // return (ok || config.simulating);
 }
 
 /**
@@ -152,25 +152,25 @@ bool CAN_BUS::send()
             }
             // Attempt to send the packet
             if(type == HardwareType::Controller){
-                if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
+            //     if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
                     
                 
-                    ERROR_PRINTLN("Error sending message");
-                    success = false; // Mark failure but continue sending the rest
-                    numTxPaqError++;
-                } else {
-              DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
-                packet.id=idAux;
-                // Update the next send time for this packet if it has a timer
-                for (auto& timer : packetTimers) {
-                    if (timer.packetID == packet.id) {
+            //         ERROR_PRINTLN("Error sending message");
+            //         success = false; // Mark failure but continue sending the rest
+            //         numTxPaqError++;
+            //     } else {
+            //   DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
+            //     packet.id=idAux;
+            //     // Update the next send time for this packet if it has a timer
+            //     for (auto& timer : packetTimers) {
+            //         if (timer.packetID == packet.id) {
                         
-                        packet.nextSendTime = currentTime + timer.interval;
-                        break;
-                    }
-                }
-                numTXPaqOK++;
-            }
+            //             packet.nextSendTime = currentTime + timer.interval;
+            //             break;
+            //         }
+            //     }
+            //     numTXPaqOK++;
+            // }
             }
             else if(type == HardwareType::Transciever){
 #if defined(ARDUINO_MICRO)
@@ -238,15 +238,15 @@ bool CAN_BUS::send(unsigned long id)
         memcpy(buf, packet->bytes, len);
         if (type == HardwareType::Controller)
         {
-            if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
-            {
-                ERROR_PRINTLN("Error sending message");
-                success = false; // Mark failure but continue sending the rest
-            }
-            else
-            {
-                DEBUG_PRINTLN(" sent OK");
-            }
+            // if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
+            // {
+            //     ERROR_PRINTLN("Error sending message");
+            //     success = false; // Mark failure but continue sending the rest
+            // }
+            // else
+            // {
+            //     DEBUG_PRINTLN(" sent OK");
+            // }
         }
         else if (type == HardwareType::Transciever)
         {
@@ -422,12 +422,12 @@ bool CAN_BUS::setFilters(const unsigned long ids[], unsigned size)
 
 void CAN_BUS::printFilters()
 {
-    configurator.printCalculatedValues();
+    // configurator.printCalculatedValues();
 }
 
 void CAN_BUS::testFilters(const std::vector<uint16_t> &testIds)
 {
-    configurator.testFilters(testIds);
+    // configurator.testFilters(testIds);
 }
 
 void CAN_BUS::setPacketTimer(unsigned long packetID, unsigned long time)
