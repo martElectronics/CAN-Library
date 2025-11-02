@@ -37,7 +37,6 @@ class CAN_BUS
 public:
     // CONVERTER converter;
     CAN_DATA DataIN, DataOUT;
-
     HardwareType type;
     int error;
     int RX, TX;
@@ -146,7 +145,7 @@ public:
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int pinCs = 0, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 10, uint16_t rxQueue = 10) : _CAN(pinCs), type(type), RX(RX), TX(TX)
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 10, uint16_t rxQueue = 10)
     {
 
         //**CORREGIR3: Sigue sin estar bien. En el caso de que se use el MCP2515 se tendrían que ignorar los argumentos TX y RX y no es posible ya que el pinCs está al final.

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <MART_CAN.h>
 
-CAN_BUS CAN(HardwareType::Transciever, MCP_SPEED_1000, 2,10);
+CAN_BUS CAN(HardwareType::Transciever, MCP_SPEED_1000, 2);
 
 uint32_t a;
 uint32_t analogValue;
