@@ -156,6 +156,8 @@ public:
         //**3. Otra forma que se os ocurra a vosotros */
         //**Si veis que los constructores que yo implementé en su día os estan fastidiando y queréis usar otros para que sean más compatibles con vuestra lógica los podéis cambiar, no problem */
 
+        this.TX = TX;
+        this.RX = RX;
         timeout = 100;
         setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
