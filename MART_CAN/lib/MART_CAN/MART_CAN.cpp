@@ -487,7 +487,48 @@ bool CAN_BUS::rebootBusFromError()
     if (status.state != TWAI_STATE_BUS_OFF) {
                 return true;
     }
-    
+
     return false; // no recuperado
 
+}
+
+/**
+ * Configura los temporizadores de envío de paquetes según su prioridad inversa (ID).
+ * IDs más bajos (alta prioridad) se enviarán con intervalos más largos,
+ * para no monopolizar el bus.
+ */
+void CAN_BUS::configurePacketTimersByPriority()
+{
+    const unsigned long ids[] = {
+        10, 11, 12, 33, 65, 97, 129, 161, 193, 225, 257, 289, 321,
+        353, 385, 386, 387, 388, 389, 390, 391, 392, 393, 400,
+        1025, 1057, 1089, 1121, 1153, 1160, 1161, 1162, 1163,
+        1164, 1165, 1166, 1167, 1168, 1169, 1170
+    };
+
+    const size_t numIds = sizeof(ids) / sizeof(ids[0]);
+    const unsigned long minInterval = 50;    // ms
+    const unsigned long maxInterval = 800;   // ms
+
+    // Encontrar el ID mínimo y máximo reales
+    unsigned long minId = ids[0];
+    unsigned long maxId = ids[0];
+    for (size_t i = 1; i < numIds; ++i) {
+        if (ids[i] < minId) minId = ids[i];
+        if (ids[i] > maxId) maxId = ids[i];
+    }
+
+    for (size_t i = 0; i < numIds; ++i) {
+        // Escalar según el valor de ID
+        float ratio = static_cast<float>(ids[i] - minId) / (maxId - minId);
+        ratio = 1.0f - ratio;
+
+        unsigned long interval = minInterval + static_cast<unsigned long>(ratio * (maxInterval - minInterval));
+
+        setPacketTimer(ids[i], interval);
+
+        DEBUG_PRINTLN((String)"[TIMER] ID " + ids[i] + " -> " + interval + " ms");
+    }
+
+    Serial.println("[INFO] Timers configurados por valor de ID (alta prioridad = más intervalo)");
 }

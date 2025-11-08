@@ -415,8 +415,11 @@ public:
     unsigned runtimeTime, numRXPaqOK, numTXPaqOK, numTxPaqError;                                     // Actual data
     unsigned previousStatusIntervalTime, previousStatusRuntimeTime, intervalTime, numCurrentSamples; // Aux data
 
-    //*BUS_OFF REBOOT*//
+    //** BUS_OFF REBOOT **//
     bool rebootBusFromError();
+
+    //** PACKET TIMING **//
+    void configurePacketTimersByPriority();
 
 private:
     struct RRFIds
