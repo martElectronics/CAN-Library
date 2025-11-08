@@ -466,68 +466,28 @@ void CAN_BUS::setCANStatusData()
     // this->setPacket(statusPacketOffset + 2, d2);
 }
 
-void CAN_BUS::getCANStatusData()
-{
-    #if defined(ESP32) || defined(ESP32S3)
-    static uint64_t tAux = millis();
-    if ((millis() - tAux) >= 1000)
-    {
-        uint32_t alerts;
-        twai_read_alerts(&alerts, 0); // Non-blocking read
-
-        if (alerts & TWAI_ALERT_BUS_OFF)
-        {
-            Serial.println("[ERROR] Bus-off state detected! Attempting recovery...");
-            twai_initiate_recovery(); // Auto-recover from bus-off
-        }
-        if (alerts & TWAI_ALERT_ERR_PASS)
-        {
-            Serial.println("[WARNING] Controller is in error-passive state.");
-        }
-        if (alerts & TWAI_ALERT_TX_FAILED)
-        {
-            Serial.println("[ERROR] Transmission failed (no ACK). Check receiver.");
-        }
-        if (alerts & TWAI_ALERT_TX_RETRIED)
-        {
-            Serial.println("[ERROR] TX queue full! Reduce send rate or increase queue size.");
-        }
-
-        twai_status_info_t status;
-        twai_get_status_info(&status);
-
-        // Print controller state
-        Serial.print("TWAI State: ");
-        switch (status.state)
-        {
-        case TWAI_STATE_RUNNING:
-            Serial.println("Running");
-            break;
-        case TWAI_STATE_BUS_OFF:
-            Serial.println("Bus-Off");
-            break;
-        case TWAI_STATE_STOPPED:
-            Serial.println("Stopped");
-            break;
-        case TWAI_STATE_RECOVERING:
-            Serial.println("Recovering");
-            break;
-        default:
-            Serial.println("Unknown");
-        }
-
-        // Print error counters
-        Serial.printf("TX Errors: %d, RX Errors: %d\n",
-                      status.tx_error_counter,
-                      status.rx_error_counter);
-
-    Serial.println();
-    tAux=millis();
-    }
-    #endif
-}
-
 void CAN_BUS::printReceivedIds()
 {
     DataIN.printAllPacketsIDs();
+}
+
+bool CAN_BUS::rebootBusFromError()
+{
+    twai_status_info_t status;
+
+    if (status.state != TWAI_STATE_BUS_OFF) {
+        return true;
+    }
+
+    twai_initiate_recovery();
+    delay(10);
+
+    //Comprobar si se ha recuperado
+    twai_get_status_info(&status);
+    if (status.state != TWAI_STATE_BUS_OFF) {
+                return true;
+    }
+    
+    return false; // no recuperado
+
 }

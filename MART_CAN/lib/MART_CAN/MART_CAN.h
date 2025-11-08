@@ -409,12 +409,14 @@ public:
 
     //** CAN STATUS DATA**//
     void setCANStatusData();
-    void getCANStatusData();
 
     //** CAN BUS STATUS DATA **//
     unsigned nodeID, statusPacketOffset;                                                             // IDs
     unsigned runtimeTime, numRXPaqOK, numTXPaqOK, numTxPaqError;                                     // Actual data
     unsigned previousStatusIntervalTime, previousStatusRuntimeTime, intervalTime, numCurrentSamples; // Aux data
+
+    //*BUS_OFF REBOOT*//
+    bool rebootBusFromError();
 
 private:
     struct RRFIds
