@@ -529,6 +529,4 @@ void CAN_BUS::configurePacketTimersByPriority()
 
         DEBUG_PRINTLN((String)"[TIMER] ID " + ids[i] + " -> " + interval + " ms");
     }
-
-    Serial.println("[INFO] Timers configurados por valor de ID (alta prioridad = más intervalo)");
 }

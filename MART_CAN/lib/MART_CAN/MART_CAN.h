@@ -145,7 +145,7 @@ public:
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 10, uint16_t rxQueue = 10)
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 30, uint16_t rxQueue = 30)
     {
 
         //**CORREGIR3: Sigue sin estar bien. En el caso de que se use el MCP2515 se tendrían que ignorar los argumentos TX y RX y no es posible ya que el pinCs está al final.
