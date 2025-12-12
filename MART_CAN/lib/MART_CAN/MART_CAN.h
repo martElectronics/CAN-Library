@@ -135,6 +135,7 @@ public:
 #if defined(ESP32) || defined(ESP32S3)
             // ESP32Can.setPins(RX, TX);
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
+            twai_filter_config_t filter = createFilterFromProfile(filterProfile);
             //**CORREGIR3: El tamaño de la cola debe de ser genérica y configurable por parámetro, podéis usar unos parámetros por defecto como en el caso del constructor
             if (!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, txQueue, rxQueue))
             {
@@ -145,7 +146,7 @@ public:
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 30, uint16_t rxQueue = 30)
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int filterProfile = 0, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 30, uint16_t rxQueue = 30)
     {
 
         //**CORREGIR3: Sigue sin estar bien. En el caso de que se use el MCP2515 se tendrían que ignorar los argumentos TX y RX y no es posible ya que el pinCs está al final.
@@ -422,6 +423,7 @@ public:
     void configurePacketTimersByPriority();
 
 private:
+    int filterProfile;
     struct RRFIds
     {
         std::vector<unsigned long> INRRFid;
@@ -472,6 +474,44 @@ private:
             }
             Serial.println(); // New line after printing OUTRRFid
         }
+    }
+
+     twai_filter_config_t createFilterFromProfile(int profile)
+    {
+        switch(profile)
+        {
+            case 1:  // VCU
+                return filter_VCU();
+
+            case 2:  // BMS
+                return filter_BMS();
+
+            case 3:  // PDM
+                return filter_PDM();
+            default:
+                return TWAI_FILTER_CONFIG_ACCEPT_ALL();
+        }
+    }
+    
+    twai_filter_config_t filter_VCU(){
+        twai_filter_config_t f;
+        return f;
+    }
+
+    twai_filter_config_t filter_BMS()
+    {
+        twai_filter_config_t f;
+        return f;
+    }
+    twai_filter_config_t filter_PDM()
+    {
+        twai_filter_config_t f;
+        f.single_filter = true;
+        // IDs 1025 (0x401) - 1153 (0x481)
+        f.acceptance_code = (0x401 << 21);
+        //ID bit 7 -> TWAI bit 28
+        f.acceptance_mask = ~(1 << 28);
+        return f;
     }
 };
 
