@@ -159,6 +159,7 @@ public:
 
         this->TX = TX;
         this->RX = RX;
+        this->filterProfile = filterProfile;
         timeout = 100;
         setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
@@ -495,6 +496,13 @@ private:
     
     twai_filter_config_t filter_VCU(){
         twai_filter_config_t f;
+        f.single_filter = true;
+        f.acceptance_code = (0x401 << 21);
+        f.acceptance_mask = 
+        (1 << 26) |
+        (1<<27) |
+        (1<<28);
+        
         return f;
     }
 
@@ -507,10 +515,12 @@ private:
     {
         twai_filter_config_t f;
         f.single_filter = true;
-        // IDs 1025 (0x401) - 1153 (0x481)
         f.acceptance_code = (0x401 << 21);
-        //ID bit 7 -> TWAI bit 28
-        f.acceptance_mask = ~(1 << 28);
+        f.acceptance_mask = 
+        (1 << 26) |
+        (1<<27) |
+        (1<<28);
+        
         return f;
     }
 };
