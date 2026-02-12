@@ -43,8 +43,6 @@ public:
     int timeout;
     struct Config
     {
-        bool respondToRRF;            // Automaticaly respond to a RRF
-        bool autoRemoveRRFPacket;     // Automaticaly delete a received rrf when the requested data is sent
         bool simulating;              // Set to true for testing when no MCP2515 are connected to the microcontroller
         bool autoRemoveStoredFilters; // Removes the stored masks and filters when applied to the MCP2515 registers to save memory
         bool sendStatusData;          // Send status data such as runtime time, number of sent, received and collided paquets.
@@ -163,8 +161,6 @@ public:
         timeout = 100;
         setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
-        config.respondToRRF = true;
-        config.autoRemoveRRFPacket = true;
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
         config.sendStatusData = false;
@@ -181,8 +177,6 @@ public:
     // Sends a specific stored data packet in DataOUT
     bool send(unsigned long id);
 
-    // Sends a specific stored data packet in DataOUT
-    bool sendRequestedRRF(unsigned long id);
 
     // Receives data packets and stores them in DataIN
     void receive();
@@ -218,8 +212,6 @@ public:
             DataOUT.dataRaw.size = 8;
             DataOUT.dataRaw.id = canId;
             DataOUT.dataRaw.typeExtendedId = DataOUT.dataRaw.id > 0x7FF;
-            DataOUT.dataRaw.rrf = false;
-            DataOUT.dataRaw.WaitForRRF = false;
             uint8_t *outputArray = DataOUT.dataRaw.bytes;
             // Clear the output array
             std::memset(outputArray, 0xFF, 8);
@@ -344,10 +336,8 @@ public:
     void setPacket(unsigned long canId)
     {
         DataOUT.dataRaw.size = 8;
-        DataOUT.dataRaw.rrf = true;
         DataOUT.dataRaw.id = canId;
         DataOUT.dataRaw.typeExtendedId = (DataOUT.dataRaw.id > 0x7FF);
-        DataOUT.dataRaw.WaitForRRF = false;
         DataOUT.addPacket(DataOUT.dataRaw);
     }
 
@@ -393,8 +383,6 @@ public:
         }
         Serial.println("]");
     }
-    // Configures the RRF pairs
-    void setRRFId(unsigned long inId, unsigned long outId);
 
     // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
     bool setFilters(const unsigned long ids[], unsigned size);
@@ -425,11 +413,6 @@ public:
 
 private:
     int filterProfile;
-    struct RRFIds
-    {
-        std::vector<unsigned long> INRRFid;
-        std::vector<unsigned long> OUTRRFid;
-    };
     struct PacketTimer
     {
         unsigned long packetID;
@@ -437,16 +420,11 @@ private:
     };
     std::vector<PacketTimer> packetTimers;
 
-    std::vector<RRFIds> rrfIdsList;       // Vector holding INRRFid and OUTRRFid vectors
     std::vector<unsigned long> filterIDs; // Vector holding INRRFid and OUTRRFid vectors
 
     bool readBytes();
     bool writeBytes();
-    // Method to search for an InID and return the associated OUTids vector
-    std::vector<unsigned long> getOutIdsByInId(unsigned long inId);
 
-    // Method to search for an OUTid and return true if found
-    bool searchOutId(unsigned long outId);
 
     /*
     //Change the speed of the bus while running (ms)
@@ -454,28 +432,6 @@ private:
         ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
     }
     */
-    // Method to print all RRFIds
-    void printRRFIds()
-    {
-        for (const auto &rrfIds : rrfIdsList)
-        {
-            Serial.print("INRRFid: ");
-            for (const auto &id : rrfIds.INRRFid)
-            {
-                Serial.print(id);
-                Serial.print(" ");
-            }
-            Serial.println(); // New line after printing INRRFid
-
-            Serial.print("OUTRRFid: ");
-            for (const auto &id : rrfIds.OUTRRFid)
-            {
-                Serial.print(id);
-                Serial.print(" ");
-            }
-            Serial.println(); // New line after printing OUTRRFid
-        }
-    }
 
      twai_filter_config_t createFilterFromProfile(int profile)
     {

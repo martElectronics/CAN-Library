@@ -38,9 +38,7 @@ struct CanPacketRawData {
     unsigned long id;
     byte size;
     byte bytes[8];
-    bool rrf;
     byte typeExtendedId;
-    bool WaitForRRF;
     unsigned long nextSendTime;
 };
 

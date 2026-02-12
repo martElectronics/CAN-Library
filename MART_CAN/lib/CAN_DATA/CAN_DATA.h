@@ -123,52 +123,6 @@ public:
         removableIds.clear(); // Clear specific IDs as all are now removable
     }
 
-    // Prints the latest packet's details to the serial monitor
-    void printLastPacket() const
-    {
-        Serial.println();
-        Serial.print((String) "ID = " + dataRaw.id + " SIZE = " + dataRaw.size + " DATA = ");
-        for (unsigned i = 0; i < dataRaw.size; i++)
-        {
-            Serial.print((String)dataRaw.bytes[i] + " ");
-            Serial.println();
-        }
-    }
-
-    // Method to print all stored CAN packets
-    void printAllPackets() const
-    {
-        unsigned cont = 1;
-        if (packets.empty())
-        {
-            Serial.println("No packets stored.");
-            return;
-        }
-
-        for (const auto &packet : packets)
-        {
-            Serial.println((String) "Packet " + cont);
-            Serial.println("-------------");
-            Serial.print("ID = ");
-            Serial.println(packet.id); // Assuming ID is hexadecimal
-            Serial.print("Extended ID: ");
-            Serial.println(packet.typeExtendedId ? "Yes" : "No");
-            Serial.print("RRF: ");
-            Serial.println(packet.rrf ? "Yes" : "No");
-            Serial.print("Size = ");
-            Serial.println(packet.size);
-            Serial.print("Data = ");
-
-            for (unsigned i = 0; i < packet.size; i++)
-            {
-                Serial.print(packet.bytes[i], HEX);
-                Serial.print(" ");
-            }
-
-            Serial.println(); // New line after printing each packet
-        }
-    }
-
     void printAllPacketsIDs() const
     {
         unsigned cont = 1;

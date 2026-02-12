@@ -135,7 +135,7 @@ bool CAN_BUS::send()
 
        
          
-        if (readyToSend && !packet.WaitForRRF) {
+        if (readyToSend) {
 
             //Store the packet ID before the possible ID change if the packet is a RRF
             unsigned long idAux=packet.id;
@@ -144,13 +144,6 @@ bool CAN_BUS::send()
             
             memcpy(buf, packet.bytes, packet.size);
 
-            if(packet.rrf)
-            {
-            unsigned long mask = 1UL << 30;
-
-              // Set the bit at bitPosition
-              packet.id |= mask;
-            }
             // Attempt to send the packet
             if(type == HardwareType::Controller){
             //     if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
@@ -209,9 +202,7 @@ bool CAN_BUS::send()
 #endif
             }
             }
-            else if (packet.WaitForRRF) {
-                DEBUG_PRINTLN((String)"Packet not sent because it is waiting for a RRF ID = " + packet.id);
-            } }); // Ensure this closing brace matches the lambda function
+           }); // Ensure this closing brace matches the lambda function
 
     runtimeTime = millis() - previousStatusRuntimeTime;
 
@@ -285,30 +276,6 @@ bool CAN_BUS::send(unsigned long id)
     return success;
 }
 
-bool CAN_BUS::sendRequestedRRF(unsigned long id)
-{
-    bool ok = true;
-    std::vector<unsigned long> outIds = getOutIdsByInId(id);
-    if (!outIds.empty())
-    {
-        DEBUG_PRINTLN("Sending messages for OUTRRFids associated with INRRFid 0x");
-        DEBUG_PRINTLN(id);
-        for (unsigned long id : outIds)
-        {
-            if (!send(id))
-                ok = false; // Call the send method for each OUTRRFid
-        }
-    }
-    else
-    {
-        ok = false;
-        DEBUG_PRINT("No OUTRRFids found for INRRFid 0x");
-        DEBUG_PRINTLN(id);
-    }
-    // returns ok if all the ids that ere config using setRRFId are found and sent correctly
-    return (ok || config.simulating);
-}
-
 /**
  * Receives messages from the CAN bus and stores them in DataIN.
  * This method repeatedly calls readBytes() to read any available CAN messages.
@@ -332,82 +299,9 @@ void CAN_BUS::receive()
         DEBUG_PRINTLN((String) "Time to add packet: " + (after - mills));
         mills = after;
         DEBUG_PRINTLN((String) "Rx ID: " + DataIN.dataRaw.id);
-        //  Respond to RRF if the option is enabled
-        if (DataIN.dataRaw.rrf && config.respondToRRF)
-        {
-
-            // Serial.println("Sending requested paquets of rrf");
-            sendRequestedRRF(DataIN.dataRaw.id);
-            if (config.autoRemoveRRFPacket)
-            {
-                DataIN.removePacket(DataIN.dataRaw.id);
-            }
-        }
+        
         numRXPaqOK++;
     }
-}
-
-// Configures the RRF pairs
-void CAN_BUS::setRRFId(unsigned long inId, unsigned long outId)
-{
-    // Search for an existing inId
-    auto it = std::find_if(rrfIdsList.begin(), rrfIdsList.end(),
-                           [inId](const RRFIds &rrfIds)
-                           {
-                               return !rrfIds.INRRFid.empty() && rrfIds.INRRFid[0] == inId;
-                           });
-
-    if (it != rrfIdsList.end())
-    {
-        // inId found, append outId to the existing OUTRRFid vector
-        it->OUTRRFid.push_back(outId);
-    }
-    else
-    {
-        // inId not found, create a new RRFIds instance and insert it
-        RRFIds newIds;
-        newIds.INRRFid.push_back(inId);
-        newIds.OUTRRFid.push_back(outId);
-        // Find the correct position to insert to keep the list ordered
-        auto insertPos = std::lower_bound(rrfIdsList.begin(), rrfIdsList.end(), inId,
-                                          [](const RRFIds &rrfIds, unsigned long id)
-                                          {
-                                              return !rrfIds.INRRFid.empty() && rrfIds.INRRFid[0] < id;
-                                          });
-        rrfIdsList.insert(insertPos, newIds);
-    }
-}
-
-std::vector<unsigned long> CAN_BUS::getOutIdsByInId(unsigned long inId)
-{
-    for (const auto &rrfIds : rrfIdsList)
-    {
-        // Check if the inId is in the INRRFid vector
-        if (std::find(rrfIds.INRRFid.begin(), rrfIds.INRRFid.end(), inId) != rrfIds.INRRFid.end())
-        {
-            // If inId is found, return the associated OUTRRFid vector
-            return rrfIds.OUTRRFid;
-        }
-    }
-    return std::vector<unsigned long>(); // inId not found
-}
-
-bool CAN_BUS::searchOutId(unsigned long outId)
-{
-    bool ok;
-    for (const auto &rrfIds : rrfIdsList)
-    {
-        // Check if the outId is in the OUTRRFid vector
-        if (std::find(rrfIds.OUTRRFid.begin(), rrfIds.OUTRRFid.end(), outId) != rrfIds.OUTRRFid.end())
-        {
-            ok = true;
-        }
-        else
-        {
-            ok = false; // outId not found in any vector
-        }
-    }
-    return (ok);
 }
 
 // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
