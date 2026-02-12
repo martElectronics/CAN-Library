@@ -219,15 +219,15 @@ bool CAN_BUS::send(unsigned long id)
 {
     bool success = true;
 
-    const CanPacketRawData *packet = DataOUT.getPacketById(id);
+    CanPacketRawData packet;
     DEBUG_PRINT((String) "Sending packet with id " + id);
-    if (packet != nullptr)
+    if (DataOUT.getPacketById(id, packet))
     {
-        byte len = packet->size;
+        byte len = packet.size;
         byte buf[8];
 
         // Copy data to buffer
-        memcpy(buf, packet->bytes, len);
+        memcpy(buf, packet.bytes, len);
         if (type == HardwareType::Controller)
         {
             // if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
@@ -248,12 +248,12 @@ bool CAN_BUS::send(unsigned long id)
 #if defined(ESP32) || defined(ESP32S3)
 
             CanFrame frame = {0};
-            frame.identifier = packet->id;
-            frame.extd = packet->typeExtendedId;
-            frame.data_length_code = packet->size;
+            frame.identifier = packet.id;
+            frame.extd = packet.typeExtendedId;
+            frame.data_length_code = packet.size;
             for (int i = 0; i < 8; i++)
             {
-                frame.data[i] = packet->bytes[i];
+                frame.data[i] = packet.bytes[i];
             }
             if (!ESP32Can.writeFrame(frame))
             {

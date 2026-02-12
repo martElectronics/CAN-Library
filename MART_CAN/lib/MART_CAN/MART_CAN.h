@@ -274,15 +274,15 @@ public:
         }
         else
         {
-            const CanPacketRawData *packet = DataIN.getPacketById(canId);
-            if (packet != nullptr)
+            CanPacketRawData packet;
+            if (DataIN.getPacketById(canId, packet))
             {
                 if (data != nullptr && dataSize > 0)
                 {
                     // Extract the data
                     if (!cmdConversionToLittleEndian)
                     {
-                        std::memcpy(data, packet->bytes, dataBytes);
+                        std::memcpy(data, packet.bytes, dataBytes);
                     }
 
                     else
@@ -298,7 +298,7 @@ public:
                             // Convert big endian to little endian by reading bytes in reverse order
                             for (size_t j = 0; j < elementSize; ++j)
                             {
-                                value = (value << 8) | packet->bytes[startPos + j];
+                                value = (value << 8) | packet.bytes[startPos + j];
                             }
 
                             data[i] = value;
