@@ -28,8 +28,7 @@
 
 enum class HardwareType
 {
-    Transciever,
-    Controller
+    Transciever
 };
 class CAN_BUS
 {
@@ -48,41 +47,6 @@ public:
         bool sendStatusData;          // Send status data such as runtime time, number of sent, received and collided paquets.
     } config;
 
-    // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
-
-    // CAN_BUS(int pinCs) : _CAN(pinCs)
-    // {
-    //     // if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-    //     //     Serial.println("MCP2515 Initialized Successfully!");
-    //     // else
-    //     //     Serial.println("Error Initializing MCP2515...");
-    //     // _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-
-    //     // // Default configuration
-    //     // config.respondToRRF = true;
-    //     // config.autoRemoveRRFPacket = true;
-    //     // config.simulating = false;
-    //     // config.autoRemoveStoredFilters = true;
-    //     // config.sendStatusData = false;
-    // }
-
-    // Constructor: Initializes the MCP_CAN instance and sets up the CAN interface
-    // CAN_BUS(int pinCs, int _nodeID) : _CAN(pinCs)
-    // {
-    //     // if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-    //     //     Serial.println("MCP2515 Initialized Successfully!");
-    //     // else
-    //     //     Serial.println("Error Initializing MCP2515...");
-    //     // _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-
-    //     // // Default configuration
-    //     // config.respondToRRF = true;
-    //     // config.autoRemoveRRFPacket = true;
-    //     // config.simulating = false;
-    //     // config.autoRemoveStoredFilters = true;
-    //     // config.sendStatusData = false;
-    // }
-
     // Destructor
     ~CAN_BUS() {}
 
@@ -91,51 +55,15 @@ public:
         error = 0;
         timeout = timeoutRead;
         // this->type = type; --> Cambiado, está en el constructor para que no de error a la hora de llamarlo en el main
-        if (this->type == HardwareType::Controller)
-        {
-            // if (speed == MCP_SPEED_500)
-            // {
-            //     if (_CAN.begin(MCP_ANY, CAN_500KBPS, MCP_8MHZ) == CAN_OK)
-            //     {
-            //         Serial.println("MCP2515 Initialized Successfully!");
-            //     }
-            //     else
-            //     {
-            //         Serial.println("Error Initializing MCP2515...");
-            //         error = 1;
-            //         return;
-            //     }
-            //     _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-            // }
-            // else if (speed == MCP_SPEED_1000)
-            // {
-            //     if (_CAN.begin(MCP_ANY, CAN_1000KBPS, MCP_8MHZ) == CAN_OK)
-            //     {
-            //         Serial.println("MCP2515 Initialized Successfully!");
-            //     }
-            //     else
-            //     {
-            //         Serial.println("Error Initializing MCP2515...");
-            //         error = 1;
-            //         return;
-            //     }
-            // }
-            // else
-            // {
-            //     Serial.println("Error Initializing MCP2515 INVALID SPEED...");
-            //     error = 1;
-            //     return;
-            // }
-            // _CAN.setMode(MCP_NORMAL); // Change to normal mode to allow messages to be transmitted
-        }
-        else if (this->type == HardwareType::Transciever)
+        
+        if (this->type == HardwareType::Transciever)
         {
 #if defined(ESP32) || defined(ESP32S3)
             // ESP32Can.setPins(RX, TX);
             ESP32Can.setSpeed(ESP32Can.convertSpeed(speed));
             twai_filter_config_t filter = createFilterFromProfile(filterProfile);
             //**CORREGIR3: El tamaño de la cola debe de ser genérica y configurable por parámetro, podéis usar unos parámetros por defecto como en el caso del constructor
-            if (!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, txQueue, rxQueue))
+            if (!ESP32Can.begin(ESP32Can.convertSpeed(speed), TX, RX, txQueue, rxQueue, &filter))
             {
                 Serial.println("Error Initializing ESP32Can...");
                 error = 1;
@@ -144,7 +72,7 @@ public:
         }
     }
     // Constructor: Initializes the transciever or controller instance and sets up the CAN interface
-    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID, int filterProfile = 0, int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 30, uint16_t rxQueue = 30)
+    CAN_BUS(HardwareType type, unsigned int speed, int _nodeID,  int8_t TX = 5, int8_t RX = 4, uint16_t txQueue = 30, uint16_t rxQueue = 30)
     {
 
         //**CORREGIR3: Sigue sin estar bien. En el caso de que se use el MCP2515 se tendrían que ignorar los argumentos TX y RX y no es posible ya que el pinCs está al final.
@@ -155,9 +83,10 @@ public:
         //**3. Otra forma que se os ocurra a vosotros */
         //**Si veis que los constructores que yo implementé en su día os estan fastidiando y queréis usar otros para que sean más compatibles con vuestra lógica los podéis cambiar, no problem */
 
+        this->type=type;
         this->TX = TX;
         this->RX = RX;
-        this->filterProfile = filterProfile;
+        this->filterProfile = _nodeID;
         timeout = 100;
         setupCANHardware(speed, txQueue, rxQueue);
         // Default configuration
@@ -437,13 +366,13 @@ private:
     {
         switch(profile)
         {
-            case 1:  // VCU
+            case 4:  // VCU
                 return filter_VCU();
 
-            case 2:  // BMS
+            case 3:  // BMS
                 return filter_BMS();
 
-            case 3:  // PDM
+            case 2:  // PDM
                 return filter_PDM();
             default:
                 return TWAI_FILTER_CONFIG_ACCEPT_ALL();

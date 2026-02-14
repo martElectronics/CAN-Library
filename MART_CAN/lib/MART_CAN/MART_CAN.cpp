@@ -11,40 +11,8 @@
 bool CAN_BUS::readBytes()
 {
     bool ok = false;
-    if (type == HardwareType::Controller)
+    if (type == HardwareType::Transciever)
     {
-        // if (!digitalRead(_CAN.pinINT) && !config.simulating)
-        // {
-        //     // byte rxBuf[8];
-        //     // _CAN.readMsgBuf(&DataIN.dataRaw.id, &DataIN.dataRaw.size, DataIN.dataRaw.bytes); // Read data: len = data length, buf = data byte(s)
-        //     // if ((DataIN.dataRaw.id & 0x80000000) == 0x80000000)
-        //     //     DataIN.dataRaw.typeExtendedId = true;
-        //     // else
-        //     //     DataIN.dataRaw.typeExtendedId = false;
-
-        //     // if ((DataIN.dataRaw.id & 0x40000000) == 0x40000000)
-        //     // {
-        //     //     unsigned long mask = ~(1UL << 30);
-        //     //     // Clear the bit at bitPosition
-        //     //     DataIN.dataRaw.id &= mask;
-        //     //     DataIN.dataRaw.rrf = true;
-        //     //     DEBUG_PRINTLN("Received RRF");
-        //     // }
-        //     // else
-        //     //     DataIN.dataRaw.rrf = false;
-
-        //     // ok = true;
-        // }
-        // else
-        // {
-        //     ok = false;
-        // }
-    }
-    else if (type == HardwareType::Transciever)
-    {
-#if defined(ARDUINO_MICRO)
-        Serial.println("Not available for arduino + transciever");
-#endif
 #if defined(ESP32) || defined(ESP32S3)
 
         CanFrame frame = {0};
@@ -63,29 +31,6 @@ bool CAN_BUS::readBytes()
 #endif
     }
     return (ok || config.simulating);
-}
-
-/**
- * Writes a message to the CAN bus using the data in DataOUT structure.
- * It sends a message with the specified message ID, flag for extended ID,
- * message length, and data bytes. The status of the message send operation
- * is checked to ensure successful transmission.
- * @return true if the message was successfully sent, false otherwise.
- */
-bool CAN_BUS::writeBytes()
-{
-    // bool ok;
-    // byte sndStat = _CAN.sendMsgBuf(DataOUT.dataRaw.id, DataOUT.dataRaw.typeExtendedId, 8, DataOUT.dataRaw.bytes);
-    // if (sndStat == CAN_OK)
-    // {
-    //     ok = true;
-    // }
-    // else
-    // {
-    //     ok = false;
-    // }
-    // return (ok || config.simulating);
-    return 0;
 }
 
 /**
@@ -144,32 +89,7 @@ bool CAN_BUS::send()
             
             memcpy(buf, packet.bytes, packet.size);
 
-            // Attempt to send the packet
-            if(type == HardwareType::Controller){
-            //     if (_CAN.sendMsgBuf(packet.id, packet.size, buf) != CAN_OK) {
-                    
-                
-            //         ERROR_PRINTLN("Error sending message");
-            //         success = false; // Mark failure but continue sending the rest
-            //         numTxPaqError++;
-            //     } else {
-            //   DEBUG_PRINTLN((String)"Packet sent ID = " + packet.id);
-            //     packet.id=idAux;
-            //     // Update the next send time for this packet if it has a timer
-            //     for (auto& timer : packetTimers) {
-            //         if (timer.packetID == packet.id) {
-                        
-            //             packet.nextSendTime = currentTime + timer.interval;
-            //             break;
-            //         }
-            //     }
-            //     numTXPaqOK++;
-            // }
-            }
-            else if(type == HardwareType::Transciever){
-#if defined(ARDUINO_MICRO)
-                Serial.println("Not available for arduino + transciever");
-#endif
+            if(type == HardwareType::Transciever){
 #if defined(ESP32) || defined(ESP32S3)
                 
                 CanFrame frame = {0};
@@ -228,23 +148,8 @@ bool CAN_BUS::send(unsigned long id)
 
         // Copy data to buffer
         memcpy(buf, packet.bytes, len);
-        if (type == HardwareType::Controller)
+        if (type == HardwareType::Transciever)
         {
-            // if (_CAN.sendMsgBuf(packet->id, packet->size, buf))
-            // {
-            //     ERROR_PRINTLN("Error sending message");
-            //     success = false; // Mark failure but continue sending the rest
-            // }
-            // else
-            // {
-            //     DEBUG_PRINTLN(" sent OK");
-            // }
-        }
-        else if (type == HardwareType::Transciever)
-        {
-#if defined(ARDUINO_MICRO)
-            Serial.println("Not available for arduino + transciever");
-#endif
 #if defined(ESP32) || defined(ESP32S3)
 
             CanFrame frame = {0};
@@ -260,10 +165,6 @@ bool CAN_BUS::send(unsigned long id)
                 ERROR_PRINTLN("Error sending message");
                 success = false; // Mark failure but continue sending the rest
             }
-#endif
-
-#if defined(ARDUINO_MICRO)
-            Serial.println("Not available for arduino + transciever");
 #endif
         }
     }
@@ -368,6 +269,7 @@ void CAN_BUS::printReceivedIds()
 bool CAN_BUS::rebootBusFromError()
 {
     twai_status_info_t status;
+    twai_get_status_info(&status);
 
     if (status.state != TWAI_STATE_BUS_OFF) {
         return true;

@@ -39,7 +39,7 @@ struct CanPacketRawData {
     byte size;
     byte bytes[8];
     byte typeExtendedId;
-    unsigned long nextSendTime;
+    unsigned long nextSendTime = 0;
 };
 
 #define STATUS_START_MASTER_ID 2030
