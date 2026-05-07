@@ -456,8 +456,13 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
 
     hfdcan.Instance = FDCAN1;
 
-    // Default configuration (assuming 170Mhz system clock and 125kbps to 1Mbps CAN)
-    // You may need to tweak these based on Actual Clock tree of user's STM32duino setup
+    // FDCAN clock = 24 MHz (STM32G474RE con STM32duino, HSI=16MHz, PLLQ o HSE)
+    // Formula: Baudrate = FDCAN_CLK / (Prescaler * (1 + TimeSeg1 + TimeSeg2))
+    // Usando TimeSeg1=12, TimeSeg2=3 -> BTQ=16, Sample Point=81.25%
+    //   125k  -> Prescaler = 24MHz / (125k  * 16) = 12   -> exacto
+    //   250k  -> Prescaler = 24MHz / (250k  * 16) = 6    -> exacto
+    //   500k  -> Prescaler = 24MHz / (500k  * 16) = 3    -> exacto
+    //   1000k -> Prescaler = 24MHz / (1000k * 16) = 1.5  -> usar BTQ=12 (TimeSeg1=9, TimeSeg2=2), Prescaler=2
     hfdcan.Init.ClockDivider = FDCAN_CLOCK_DIV1;
     hfdcan.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
     hfdcan.Init.Mode = FDCAN_MODE_NORMAL;
@@ -465,28 +470,34 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
     hfdcan.Init.TransmitPause = DISABLE;
     hfdcan.Init.ProtocolException = DISABLE;
 
-    // Nominal Bit Time calculation approximations for FDCAN runing on basic configs:
-    // This maps speed directly to an approximate prescaler assuming a ~85MHz FDCAN generic clock
     switch(speed) {
         case 125:
-            hfdcan.Init.NominalPrescaler = 40;
+            hfdcan.Init.NominalPrescaler = 12;  // 24MHz / (12 * 16) = 125000 bps
+            hfdcan.Init.NominalTimeSeg1 = 12;
+            hfdcan.Init.NominalTimeSeg2 = 3;
             break;
         case 250:
-            hfdcan.Init.NominalPrescaler = 20;
+            hfdcan.Init.NominalPrescaler = 6;   // 24MHz / (6 * 16) = 250000 bps
+            hfdcan.Init.NominalTimeSeg1 = 12;
+            hfdcan.Init.NominalTimeSeg2 = 3;
             break;
         case 500:
-            hfdcan.Init.NominalPrescaler = 10;
+            hfdcan.Init.NominalPrescaler = 3;   // 24MHz / (3 * 16) = 500000 bps
+            hfdcan.Init.NominalTimeSeg1 = 12;
+            hfdcan.Init.NominalTimeSeg2 = 3;
             break;
         case 1000:
-            hfdcan.Init.NominalPrescaler = 5;
+            hfdcan.Init.NominalPrescaler = 2;   // 24MHz / (2 * 12) = 1000000 bps
+            hfdcan.Init.NominalTimeSeg1 = 9;
+            hfdcan.Init.NominalTimeSeg2 = 2;
             break;
         default:
-            hfdcan.Init.NominalPrescaler = 10; // Default to 500k
+            hfdcan.Init.NominalPrescaler = 12;  // Default to 125k
+            hfdcan.Init.NominalTimeSeg1 = 12;
+            hfdcan.Init.NominalTimeSeg2 = 3;
     }
 
     hfdcan.Init.NominalSyncJumpWidth = 1;
-    hfdcan.Init.NominalTimeSeg1 = 13;
-    hfdcan.Init.NominalTimeSeg2 = 3;
     
     // ExtBitTime
     hfdcan.Init.DataPrescaler = 1;
@@ -524,22 +535,36 @@ void CAN_BUS::configSTM32FDCANFilter(int profile)
     sFilterConfig.FilterType = FDCAN_FILTER_MASK;
     sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
     
-    // We try to match createFilterFromProfile behavior
+    // FilterID1 = ID base, FilterID2 = Mask (0x000 = todos los bits se ignoran -> acepta TODO)
+    // En modo MASK: se acepta un frame si (frame_id & FilterID2) == (FilterID1 & FilterID2)
+    // Con FilterID2=0x000 la máscara ignora todos los bits -> acepta cualquier ID
     switch (profile) {
-        case 4: // VCU
-        case 2: // PDM
+        case 4: // VCU - solo acepta 0x401
             sFilterConfig.FilterID1 = 0x401;
-            sFilterConfig.FilterID2 = 0x7FF; // basic mask matching standard 11 bit
+            sFilterConfig.FilterID2 = 0x7FF; // máscara exacta
+            break;
+        case 2: // PDM - solo acepta 0x401
+            sFilterConfig.FilterID1 = 0x401;
+            sFilterConfig.FilterID2 = 0x7FF;
             break;
         case 3: // BMS
         default:
+            // Acepta absolutamente todos los IDs estándar
             sFilterConfig.FilterID1 = 0x000;
-            sFilterConfig.FilterID2 = 0x000; // Accept all
+            sFilterConfig.FilterID2 = 0x000; // máscara 0 -> acepta todo
             break;
     }
     
     HAL_FDCAN_ConfigFilter(&hfdcan, &sFilterConfig);
-    // Reject non-matching frames
-    HAL_FDCAN_ConfigGlobalFilter(&hfdcan, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE);
+    
+    // Las tramas que NO coincidan con ningún filtro van a FIFO0 en vez de rechazarse
+    // Esto es clave para debug: garantiza que nada se descarte inesperadamente
+    HAL_FDCAN_ConfigGlobalFilter(
+        &hfdcan,
+        FDCAN_ACCEPT_IN_RX_FIFO0,   // Non-matching std frames -> FIFO0
+        FDCAN_ACCEPT_IN_RX_FIFO0,   // Non-matching ext frames -> FIFO0
+        FDCAN_FILTER_REMOTE,        // Remote std frames -> según filtro
+        FDCAN_FILTER_REMOTE         // Remote ext frames -> según filtro
+    );
 }
 #endif
