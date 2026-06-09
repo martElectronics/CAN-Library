@@ -403,35 +403,38 @@ private:
         }
     }
     
-    twai_filter_config_t filter_VCU(){
+    // Acepta todos los paquetes del inversor (0x401, 0x421, 0x441, 0x461,
+    // 0x481, 0x4A1, 0x4C1, 0x4E1): mismo ID base 0x401 con los bits 5, 6 y 7
+    // del ID marcados como "don't care".
+    // Mapa del filtro de 32 bits (single_filter, trama estandar):
+    //   bits 31..21 -> ID de 11 bits   bit 20 -> RTR
+    //   bits 19..16 -> sin usar        bits 15..0 -> primeros 2 bytes de datos
+    // En la mascara: bit a 1 = ignorar, bit a 0 = debe coincidir.
+    twai_filter_config_t filter_inverter()
+    {
         twai_filter_config_t f;
         f.single_filter = true;
-        f.acceptance_code = (0x401 << 21);
-        f.acceptance_mask = 
-        (1 << 26) |
-        (1<<27) |
-        (1<<28);
-        
+        f.acceptance_code = (0x401UL << 21);
+        f.acceptance_mask =
+            (1UL << 26) | (1UL << 27) | (1UL << 28) | // bits 5,6,7 del ID: don't care
+            0x001FFFFFUL;                             // RTR + bytes de datos: don't care
         return f;
     }
 
+    twai_filter_config_t filter_VCU() { return filter_inverter(); }
+
+    // El BMS no debe recibir ningun paquete: con mascara 0 todos los bits deben
+    // coincidir con un codigo imposible (0xFFFFFFFF), por lo que no pasa ninguna trama.
     twai_filter_config_t filter_BMS()
     {
         twai_filter_config_t f;
-        return f;
-    }
-    twai_filter_config_t filter_PDM()
-    {
-        twai_filter_config_t f;
         f.single_filter = true;
-        f.acceptance_code = (0x401 << 21);
-        f.acceptance_mask = 
-        (1 << 26) |
-        (1<<27) |
-        (1<<28);
-        
+        f.acceptance_code = 0xFFFFFFFFUL;
+        f.acceptance_mask = 0x00000000UL;
         return f;
     }
+
+    twai_filter_config_t filter_PDM() { return filter_inverter(); }
 #endif // defined(ESP32) || defined(ESP32S3)
 };
 

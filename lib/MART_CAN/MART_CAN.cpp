@@ -406,10 +406,10 @@ bool CAN_BUS::rebootBusFromError()
 void CAN_BUS::configurePacketTimersByPriority()
 {
     const unsigned long ids[] = {
-        10, 11, 12, 33, 65, 97, 129, 161, 193, 225, 257, 289, 321,
-        353, 385, 386, 387, 388, 389, 390, 391, 392, 393, 400,
+        10, 11, 12, 13, 14, 15, 16, 33, 65, 97, 129, 161, 193, 225, 257, 289, 321,
+        353, 385, 386, 387, 388, 389, 390, 391, 392, 393,
         1025, 1057, 1089, 1121, 1153, 1160, 1161, 1162, 1163,
-        1164, 1165, 1166, 1167, 1168, 1169, 1170
+        1164, 1165, 1166, 1167
     };
 
     const size_t numIds = sizeof(ids) / sizeof(ids[0]);
@@ -534,37 +534,43 @@ void CAN_BUS::configSTM32FDCANFilter(int profile)
     sFilterConfig.FilterIndex = 0;
     sFilterConfig.FilterType = FDCAN_FILTER_MASK;
     sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    
-    // FilterID1 = ID base, FilterID2 = Mask (0x000 = todos los bits se ignoran -> acepta TODO)
-    // En modo MASK: se acepta un frame si (frame_id & FilterID2) == (FilterID1 & FilterID2)
-    // Con FilterID2=0x000 la máscara ignora todos los bits -> acepta cualquier ID
+
+    // Por defecto las tramas que NO coincidan con el filtro se rechazan, de modo
+    // que cada nodo solo reciba lo que le corresponde.
+    uint32_t nonMatching = FDCAN_REJECT;
+
+    // En modo MASK se acepta un frame si (frame_id & FilterID2) == (FilterID1 & FilterID2)
+    //   FilterID1 = ID base, FilterID2 = máscara (bit a 1 = debe coincidir, 0 = se ignora)
     switch (profile) {
-        case 4: // VCU - solo acepta 0x401
+        case 4: // VCU
+        case 2: // PDM
+            // Acepta todos los paquetes del inversor (0x401..0x4E1): ID base 0x401
+            // con los bits 5, 6 y 7 ignorados (0x7FF & ~0xE0 = 0x71F).
             sFilterConfig.FilterID1 = 0x401;
-            sFilterConfig.FilterID2 = 0x7FF; // máscara exacta
+            sFilterConfig.FilterID2 = 0x71F;
             break;
-        case 2: // PDM - solo acepta 0x401
-            sFilterConfig.FilterID1 = 0x401;
+        case 3: // BMS - no debe recibir ningún paquete
+            // Filtro imposible: exige coincidencia exacta con un ID que nadie envía.
+            sFilterConfig.FilterID1 = 0x7FF;
             sFilterConfig.FilterID2 = 0x7FF;
+            nonMatching = FDCAN_REJECT;
             break;
-        case 3: // BMS
         default:
             // Acepta absolutamente todos los IDs estándar
             sFilterConfig.FilterID1 = 0x000;
             sFilterConfig.FilterID2 = 0x000; // máscara 0 -> acepta todo
+            nonMatching = FDCAN_ACCEPT_IN_RX_FIFO0;
             break;
     }
-    
+
     HAL_FDCAN_ConfigFilter(&hfdcan, &sFilterConfig);
-    
-    // Las tramas que NO coincidan con ningún filtro van a FIFO0 en vez de rechazarse
-    // Esto es clave para debug: garantiza que nada se descarte inesperadamente
+
     HAL_FDCAN_ConfigGlobalFilter(
         &hfdcan,
-        FDCAN_ACCEPT_IN_RX_FIFO0,   // Non-matching std frames -> FIFO0
-        FDCAN_ACCEPT_IN_RX_FIFO0,   // Non-matching ext frames -> FIFO0
-        FDCAN_FILTER_REMOTE,        // Remote std frames -> según filtro
-        FDCAN_FILTER_REMOTE         // Remote ext frames -> según filtro
+        nonMatching,                // Non-matching std frames
+        nonMatching,                // Non-matching ext frames
+        FDCAN_REJECT_REMOTE,        // Remote std frames -> rechazadas
+        FDCAN_REJECT_REMOTE         // Remote ext frames -> rechazadas
     );
 }
 #endif
