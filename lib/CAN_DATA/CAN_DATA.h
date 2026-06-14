@@ -18,11 +18,18 @@ class CAN_DATA
 {
 private:
     std::vector<CanPacketRawData> packets;   // Vector to store CAN packets
-    bool allIdsRemovable;                    // Flag to indicate if all IDs are removable
+    // Si true, getPacketById() BORRA el paquete al leerlo (consume-on-read):
+    // cada paquete se entrega UNA sola vez por cada vez que entra (RX) o se
+    // encola (TX). Es el comportamiento por defecto de esta lib.
+    bool allIdsRemovable;
 public:
     CAN_DATA()
     {
-        allIdsRemovable = true; // Packets persist in DataIN so they can be read multiple times per cycle
+        // ⚠ OJO: consume-on-read. getPacketById() elimina el paquete tras
+        // devolverlo, así que NO se puede leer el mismo ID dos veces sin que
+        // vuelva a llegar/encolarse. (El comentario antiguo decía lo contrario
+        // —"persist… read multiple times"— y era falso.)
+        allIdsRemovable = true;
     }
 
     CanPacketRawData dataRaw; // Raw data of CAN packet
