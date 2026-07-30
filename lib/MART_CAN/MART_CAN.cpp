@@ -510,7 +510,7 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
     hfdcan.Init.DataTimeSeg1 = 1;
     hfdcan.Init.DataTimeSeg2 = 1;
 
-    hfdcan.Init.StdFiltersNbr = 1;
+    hfdcan.Init.StdFiltersNbr = 2;
     hfdcan.Init.ExtFiltersNbr = 0;
     hfdcan.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 
@@ -533,42 +533,77 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
 
 void CAN_BUS::configSTM32FDCANFilter(int profile)
 {
-    FDCAN_FilterTypeDef sFilterConfig;
+    FDCAN_FilterTypeDef f;
+    f.IdType = FDCAN_STANDARD_ID;
 
-    sFilterConfig.IdType = FDCAN_STANDARD_ID;
-    sFilterConfig.FilterIndex = 0;
-    sFilterConfig.FilterType = FDCAN_FILTER_MASK;
-    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-
-    // Por defecto las tramas que NO coincidan con el filtro se rechazan, de modo
-    // que cada nodo solo reciba lo que le corresponde.
+    // Frames que NO coincidan con ningún filtro: por defecto se rechazan.
     uint32_t nonMatching = FDCAN_REJECT;
 
-    // En modo MASK se acepta un frame si (frame_id & FilterID2) == (FilterID1 & FilterID2)
-    //   FilterID1 = ID base, FilterID2 = máscara (bit a 1 = debe coincidir, 0 = se ignora)
     switch (profile) {
-        case 4: // VCU
-        case 2: // PDM
-            // Acepta todos los paquetes del inversor (0x401..0x4E1): ID base 0x401
-            // con los bits 5, 6 y 7 ignorados (0x7FF & ~0xE0 = 0x71F).
-            sFilterConfig.FilterID1 = 0x401;
-            sFilterConfig.FilterID2 = 0x71F;
+        case 4: // ---------- VCU ----------
+            // Recibe estado del inversor 0x401 / 0x441 / 0x481 (grupo 0x401..0x4E1)
+            // y estado del BMS 0x00A (SDC).
+            // Filtro 0: MÁSCARA del grupo inversor -> acepta si (id & 0x71F) == 0x401.
+            f.FilterIndex  = 0;
+            f.FilterType   = FDCAN_FILTER_MASK;
+            f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+            f.FilterID1    = 0x401;
+            f.FilterID2    = 0x71F;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            // Filtro 1: DUAL (dos IDs exactos). Solo el BMS 0x00A -> ID1 = ID2.
+            f.FilterIndex  = 1;
+            f.FilterType   = FDCAN_FILTER_DUAL;
+            f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+            f.FilterID1    = 0x00A;
+            f.FilterID2    = 0x00A;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
             break;
-        case 3: // BMS - no debe recibir ningún paquete
-            // Filtro imposible: exige coincidencia exacta con un ID que nadie envía.
-            sFilterConfig.FilterID1 = 0x7FF;
-            sFilterConfig.FilterID2 = 0x7FF;
+
+        case 2: // ---------- PDM ----------
+            // Grupo del inversor 0x401..0x4E1 y, además, 0x3E1 (993).
+            f.FilterIndex  = 0;
+            f.FilterType   = FDCAN_FILTER_MASK;
+            f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+            f.FilterID1    = 0x401;
+            f.FilterID2    = 0x71F;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            // Filtro 1: DUAL con 0x3E1 (993) -> ID1 = ID2.
+            f.FilterIndex  = 1;
+            f.FilterType   = FDCAN_FILTER_DUAL;
+            f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+            f.FilterID1    = 0x3E1;
+            f.FilterID2    = 0x3E1;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            break;
+
+        case 3: // ---------- BMS ----------
+            // No debe recibir ningún paquete: ambos filtros deshabilitados + rechazo global.
+            f.FilterType   = FDCAN_FILTER_MASK;   // valor válido aunque esté deshabilitado
+            f.FilterID1    = 0x000;
+            f.FilterID2    = 0x000;
+            f.FilterIndex  = 0;
+            f.FilterConfig = FDCAN_FILTER_DISABLE;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            f.FilterIndex  = 1;
+            f.FilterConfig = FDCAN_FILTER_DISABLE;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
             nonMatching = FDCAN_REJECT;
             break;
-        default:
-            // Acepta absolutamente todos los IDs estándar
-            sFilterConfig.FilterID1 = 0x000;
-            sFilterConfig.FilterID2 = 0x000; // máscara 0 -> acepta todo
+
+        default: // ---------- Acepta todo ----------
+            f.FilterIndex  = 0;
+            f.FilterType   = FDCAN_FILTER_MASK;
+            f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+            f.FilterID1    = 0x000;
+            f.FilterID2    = 0x000;   // máscara 0 -> acepta todo
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            f.FilterIndex  = 1;
+            f.FilterType   = FDCAN_FILTER_MASK;
+            f.FilterConfig = FDCAN_FILTER_DISABLE;
+            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
             nonMatching = FDCAN_ACCEPT_IN_RX_FIFO0;
             break;
     }
-
-    HAL_FDCAN_ConfigFilter(&hfdcan, &sFilterConfig);
 
     HAL_FDCAN_ConfigGlobalFilter(
         &hfdcan,

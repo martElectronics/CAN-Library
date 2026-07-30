@@ -392,50 +392,54 @@ private:
         {
             case 4:  // VCU
                 return filter_VCU();
-
             case 3:  // BMS
                 return filter_BMS();
-
             case 2:  // PDM
                 return filter_PDM();
             default:
                 return TWAI_FILTER_CONFIG_ACCEPT_ALL();
         }
     }
-    
-    // Acepta todos los paquetes del inversor (0x401, 0x421, 0x441, 0x461,
-    // 0x481, 0x4A1, 0x4C1, 0x4E1): mismo ID base 0x401 con los bits 5, 6 y 7
-    // del ID marcados como "don't care".
-    // Mapa del filtro de 32 bits (single_filter, trama estandar):
-    //   bits 31..21 -> ID de 11 bits   bit 20 -> RTR
-    //   bits 19..16 -> sin usar        bits 15..0 -> primeros 2 bytes de datos
-    // En la mascara: bit a 1 = ignorar, bit a 0 = debe coincidir.
-    twai_filter_config_t filter_inverter()
+
+    // Filtro DUAL de dos IDs estandar independientes (single_filter=false). Las dos
+    // mitades del registro se combinan por OR: una trama pasa si coincide con
+    // CUALQUIERA de los dos filtros.
+    //   Filtro 1 -> ID en bits [31:21]  (misma posicion que el single_filter)
+    //   Filtro 2 -> ID en bits [15:5]
+    // En cada mitad, tras el ID van RTR y un nibble de datos, que se ignoran
+    // (mascara [20:16] y [4:0] a 1). idMask1/idMask2 son la mascara del ID
+    // (bit a 1 = ignorar ese bit del ID) para aceptar grupos, p.ej. el inversor
+    // con los bits 5,6,7 (0x0E0) como "don't care".
+    twai_filter_config_t filter_dual(uint16_t id1, uint16_t id2,
+                                     uint16_t idMask1 = 0, uint16_t idMask2 = 0)
     {
         twai_filter_config_t f;
-        f.single_filter = true;
-        f.acceptance_code = (0x401UL << 21);
-        f.acceptance_mask =
-            (1UL << 26) | (1UL << 27) | (1UL << 28) | // bits 5,6,7 del ID: don't care
-            0x001FFFFFUL;                             // RTR + bytes de datos: don't care
+        f.single_filter   = false;
+        f.acceptance_code = ((uint32_t)id1 << 21) | ((uint32_t)id2 << 5);
+        f.acceptance_mask = (0x1FUL << 16) | 0x1FUL                  // RTR + datos: don't care
+                          | ((uint32_t)idMask1 << 21) | ((uint32_t)idMask2 << 5);
         return f;
     }
 
-    twai_filter_config_t filter_VCU() { return filter_inverter(); }
+    // VCU: acepta el BMS 0x00A (SDC) y el estado del inversor 0x401/0x441/0x481
+    // (grupo 0x401..0x4E1, bits 5,6,7 del ID "don't care").
+    //   Filtro 1 -> 0x00A exacto.   Filtro 2 -> 0x401 con bits 5,6,7 ignorados.
+    twai_filter_config_t filter_VCU() { return filter_dual(0x00A, 0x401, 0x000, 0x0E0); }
+
+    // PDM: acepta el grupo del inversor 0x401..0x4E1 y, ademas, 0x3E1 (993).
+    //   Filtro 1 -> 0x3E1 exacto.   Filtro 2 -> 0x401 con bits 5,6,7 ignorados.
+    twai_filter_config_t filter_PDM() { return filter_dual(0x3E1, 0x401, 0x000, 0x0E0); }
 
     // El BMS no debe recibir ningun paquete: con mascara 0 todos los bits deben
     // coincidir con un codigo imposible (0xFFFFFFFF), por lo que no pasa ninguna trama.
     twai_filter_config_t filter_BMS()
     {
         twai_filter_config_t f;
-        f.single_filter = true;
+        f.single_filter   = true;
         f.acceptance_code = 0xFFFFFFFFUL;
         f.acceptance_mask = 0x00000000UL;
         return f;
     }
-
-    twai_filter_config_t filter_PDM() { return filter_inverter(); }
 #endif // defined(ESP32) || defined(ESP32S3)
 };
-
 #endif
