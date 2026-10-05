@@ -31,6 +31,9 @@ bool CAN_BUS::readBytes()
 #elif defined(STM32G4xx)
         if (HAL_FDCAN_GetRxFifoFillLevel(&hfdcan, FDCAN_RX_FIFO0) > 0 && !config.simulating)
         {
+            // GetRxMessage solo copia DLC bytes: sin esto, los que falten serian
+            // los de la trama anterior (de cualquier ID).
+            memset(DataIN.dataRaw.bytes, 0, sizeof(DataIN.dataRaw.bytes));
             if (HAL_FDCAN_GetRxMessage(&hfdcan, FDCAN_RX_FIFO0, &RxHeader, DataIN.dataRaw.bytes) == HAL_OK)
             {
                 DataIN.dataRaw.id = RxHeader.Identifier;
@@ -298,14 +301,23 @@ void CAN_BUS::receive()
     }
 }
 
-// Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
+// Filtro software (receive() solo guarda estos IDs) y, en STM32, tambien HW
 bool CAN_BUS::setFilters(const unsigned long ids[], unsigned size)
 {
-    for (int i = 0; i < size; i++)
+    for (unsigned i = 0; i < size; i++)
     {
         filterIDs.push_back(ids[i]);
     }
     std::sort(filterIDs.begin(), filterIDs.end());
+    filterIDs.erase(std::unique(filterIDs.begin(), filterIDs.end()), filterIDs.end());
+#if defined(STM32G4xx)
+    if (type == HardwareType::Transciever)
+    {
+        if (error != 0)
+            return false;
+        return applySTM32FDCANFilterIds();
+    }
+#endif
     return true;
 }
 
@@ -390,16 +402,16 @@ bool CAN_BUS::rebootBusFromError()
         return true; // No estamos en bus-off
     }
 
-    // Recuperar de bus-off: limpiar INIT y esperar la resincronización.
-    CLEAR_BIT(hfdcan.Instance->CCCR, FDCAN_CCCR_INIT);
-    delay(10);
-
-    HAL_FDCAN_GetProtocolStatus(&hfdcan, &psr);
-    if (psr.BusOff == 0) {
-        return true;
+    // En bus-off el FDCAN pone INIT=1 él solo; al limpiarlo arranca la
+    // secuencia de recuperación (128 x 11 bits recesivos, ~11 ms a 125 kbps).
+    // No se espera aquí: con el delay(10) de antes la comprobación salía
+    // siempre en falso (la recuperación tarda más) y el loop del llamante se
+    // frenaba 10 ms por vuelta mientras durase el bus-off. BusOff sigue a 1
+    // hasta que la recuperación termina; las siguientes llamadas lo verán.
+    if (READ_BIT(hfdcan.Instance->CCCR, FDCAN_CCCR_INIT)) {
+        CLEAR_BIT(hfdcan.Instance->CCCR, FDCAN_CCCR_INIT);
     }
-
-    return false;
+    return false; // recuperación en curso
 #endif
 }
 
@@ -443,6 +455,31 @@ void CAN_BUS::configurePacketTimersByPriority()
 }
 
 #if defined(STM32G4xx)
+// Busca un prescaler y un numero de time quanta (TQ) que den EXACTAMENTE el
+// bitrate pedido con el reloj real del FDCAN. Se prueba de 20 a 8 TQ: con los
+// 24 MHz de la Nucleo salen los mismos valores que la tabla fija de antes
+// (16 TQ a 125/250/500k, 12 TQ a 1M). Sample point ~80%.
+static bool computeNominalTiming(uint32_t clk, uint32_t bitrate,
+                                 uint32_t &presc, uint32_t &seg1, uint32_t &seg2)
+{
+    if (clk == 0 || bitrate == 0)
+        return false;
+    for (uint32_t tq = 20; tq >= 8; --tq)
+    {
+        uint32_t div = bitrate * tq;
+        if (clk % div != 0)
+            continue;
+        uint32_t p = clk / div;
+        if (p > 512)
+            continue;
+        presc = p;
+        seg2 = (tq / 5 > 2) ? tq / 5 : 2;   // 16 TQ -> 3 (81.25%), 12 TQ -> 2 (83.3%)
+        seg1 = tq - 1 - seg2;
+        return true;
+    }
+    return false;
+}
+
 HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
 {
     // Enable GPIO and FDCAN clocks
@@ -461,13 +498,11 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
 
     hfdcan.Instance = FDCAN1;
 
-    // FDCAN clock = 24 MHz (STM32G474RE con STM32duino, HSI=16MHz, PLLQ o HSE)
     // Formula: Baudrate = FDCAN_CLK / (Prescaler * (1 + TimeSeg1 + TimeSeg2))
-    // Usando TimeSeg1=12, TimeSeg2=3 -> BTQ=16, Sample Point=81.25%
-    //   125k  -> Prescaler = 24MHz / (125k  * 16) = 12   -> exacto
-    //   250k  -> Prescaler = 24MHz / (250k  * 16) = 6    -> exacto
-    //   500k  -> Prescaler = 24MHz / (500k  * 16) = 3    -> exacto
-    //   1000k -> Prescaler = 24MHz / (1000k * 16) = 1.5  -> usar BTQ=12 (TimeSeg1=9, TimeSeg2=2), Prescaler=2
+    // FDCAN_CLK se lee del arbol de relojes en vez de suponerlo: en la Nucleo
+    // G474RE es el HSE de 24 MHz (valor de reset de FDCANSEL), pero en otra
+    // placa, con otro cristal u otra fuente, el bitrate saldria mal sin avisar.
+    // Si no hay un timing exacto para ese reloj, el init falla (SetupState != 0).
     hfdcan.Init.ClockDivider = FDCAN_CLOCK_DIV1;
     hfdcan.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
     hfdcan.Init.Mode = FDCAN_MODE_NORMAL;
@@ -475,42 +510,30 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
     hfdcan.Init.TransmitPause = DISABLE;
     hfdcan.Init.ProtocolException = DISABLE;
 
-    switch(speed) {
-        case 125:
-            hfdcan.Init.NominalPrescaler = 12;  // 24MHz / (12 * 16) = 125000 bps
-            hfdcan.Init.NominalTimeSeg1 = 12;
-            hfdcan.Init.NominalTimeSeg2 = 3;
-            break;
-        case 250:
-            hfdcan.Init.NominalPrescaler = 6;   // 24MHz / (6 * 16) = 250000 bps
-            hfdcan.Init.NominalTimeSeg1 = 12;
-            hfdcan.Init.NominalTimeSeg2 = 3;
-            break;
-        case 500:
-            hfdcan.Init.NominalPrescaler = 3;   // 24MHz / (3 * 16) = 500000 bps
-            hfdcan.Init.NominalTimeSeg1 = 12;
-            hfdcan.Init.NominalTimeSeg2 = 3;
-            break;
-        case 1000:
-            hfdcan.Init.NominalPrescaler = 2;   // 24MHz / (2 * 12) = 1000000 bps
-            hfdcan.Init.NominalTimeSeg1 = 9;
-            hfdcan.Init.NominalTimeSeg2 = 2;
-            break;
-        default:
-            hfdcan.Init.NominalPrescaler = 12;  // Default to 125k
-            hfdcan.Init.NominalTimeSeg1 = 12;
-            hfdcan.Init.NominalTimeSeg2 = 3;
+    uint32_t fdcanClk = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_FDCAN);
+    uint32_t presc, seg1, seg2;
+    if (!computeNominalTiming(fdcanClk, (uint32_t)speed * 1000UL, presc, seg1, seg2))
+    {
+        Serial.println("FDCAN: no hay bit timing exacto para ese bitrate con el reloj actual");
+        return HAL_ERROR;
     }
+    hfdcan.Init.NominalPrescaler = presc;
+    hfdcan.Init.NominalTimeSeg1 = seg1;
+    hfdcan.Init.NominalTimeSeg2 = seg2;
+    // SJW = TSEG2: maxima tolerancia a la diferencia de reloj con los otros
+    // nodos (con SJW=1 cada bit solo se podia corregir 1 TQ).
+    hfdcan.Init.NominalSyncJumpWidth = seg2;
 
-    hfdcan.Init.NominalSyncJumpWidth = 1;
-    
     // ExtBitTime
     hfdcan.Init.DataPrescaler = 1;
     hfdcan.Init.DataSyncJumpWidth = 1;
     hfdcan.Init.DataTimeSeg1 = 1;
     hfdcan.Init.DataTimeSeg2 = 1;
 
-    hfdcan.Init.StdFiltersNbr = 2;
+    // Todos los del G4, para que setFilters() pueda programar tantos IDs como
+    // quepan. HAL_FDCAN_Init pone la RAM de mensajes a 0, y un elemento a 0
+    // esta deshabilitado: los que no configura el perfil no filtran nada.
+    hfdcan.Init.StdFiltersNbr = STM32_FDCAN_STD_FILTERS;
     hfdcan.Init.ExtFiltersNbr = 0;
     hfdcan.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 
@@ -520,7 +543,18 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
     }
 
     // Configure standard filter based on profile
-    configSTM32FDCANFilter(filterProfile);
+    if (configSTM32FDCANFilter(filterProfile) != HAL_OK)
+    {
+        return HAL_ERROR;
+    }
+
+    // FIFO llena -> se sobrescribe la trama MAS ANTIGUA. Con tramas periodicas
+    // (temperaturas, estados) interesa la mas reciente; en el modo por defecto
+    // (blocking) se descartaban las nuevas.
+    if (HAL_FDCAN_ConfigRxFifoOverwrite(&hfdcan, FDCAN_RX_FIFO0, FDCAN_RX_FIFO_OVERWRITE) != HAL_OK)
+    {
+        return HAL_ERROR;
+    }
 
     // Start the FDCAN module
     if (HAL_FDCAN_Start(&hfdcan) != HAL_OK)
@@ -531,10 +565,11 @@ HAL_StatusTypeDef CAN_BUS::initSTM32FDCAN(unsigned int speed)
     return HAL_OK;
 }
 
-void CAN_BUS::configSTM32FDCANFilter(int profile)
+HAL_StatusTypeDef CAN_BUS::configSTM32FDCANFilter(int profile)
 {
     FDCAN_FilterTypeDef f;
     f.IdType = FDCAN_STANDARD_ID;
+    bool ok = true;
 
     // Frames que NO coincidan con ningún filtro: por defecto se rechazan.
     uint32_t nonMatching = FDCAN_REJECT;
@@ -549,31 +584,34 @@ void CAN_BUS::configSTM32FDCANFilter(int profile)
             f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
             f.FilterID1    = 0x401;
             f.FilterID2    = 0x71F;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             // Filtro 1: DUAL (dos IDs exactos). Solo el BMS 0x00A -> ID1 = ID2.
             f.FilterIndex  = 1;
             f.FilterType   = FDCAN_FILTER_DUAL;
             f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
             f.FilterID1    = 0x00A;
             f.FilterID2    = 0x00A;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             break;
 
         case 2: // ---------- PDM ----------
             // Grupo del inversor 0x401..0x4E1 y, además, 0x3E1 (993).
+            // OJO: la PDM actual (mart-PDM, Refrigeracion_G474) NO usa este
+            // perfil: arranca con el nodo 5 y programa con setFilters() sus
+            // IDs reales (0x441 temperaturas y 0x300 consigna de la VCU).
             f.FilterIndex  = 0;
             f.FilterType   = FDCAN_FILTER_MASK;
             f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
             f.FilterID1    = 0x401;
             f.FilterID2    = 0x71F;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             // Filtro 1: DUAL con 0x3E1 (993) -> ID1 = ID2.
             f.FilterIndex  = 1;
             f.FilterType   = FDCAN_FILTER_DUAL;
             f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
             f.FilterID1    = 0x3E1;
             f.FilterID2    = 0x3E1;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             break;
 
         case 3: // ---------- BMS ----------
@@ -583,10 +621,10 @@ void CAN_BUS::configSTM32FDCANFilter(int profile)
             f.FilterID2    = 0x000;
             f.FilterIndex  = 0;
             f.FilterConfig = FDCAN_FILTER_DISABLE;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             f.FilterIndex  = 1;
             f.FilterConfig = FDCAN_FILTER_DISABLE;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             nonMatching = FDCAN_REJECT;
             break;
 
@@ -596,21 +634,89 @@ void CAN_BUS::configSTM32FDCANFilter(int profile)
             f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
             f.FilterID1    = 0x000;
             f.FilterID2    = 0x000;   // máscara 0 -> acepta todo
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             f.FilterIndex  = 1;
             f.FilterType   = FDCAN_FILTER_MASK;
             f.FilterConfig = FDCAN_FILTER_DISABLE;
-            HAL_FDCAN_ConfigFilter(&hfdcan, &f);
+            ok &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
             nonMatching = FDCAN_ACCEPT_IN_RX_FIFO0;
             break;
     }
 
-    HAL_FDCAN_ConfigGlobalFilter(
+    ok &= (HAL_FDCAN_ConfigGlobalFilter(
         &hfdcan,
         nonMatching,                // Non-matching std frames
         nonMatching,                // Non-matching ext frames
         FDCAN_REJECT_REMOTE,        // Remote std frames -> rechazadas
         FDCAN_REJECT_REMOTE         // Remote ext frames -> rechazadas
-    );
+    ) == HAL_OK);
+
+    return ok ? HAL_OK : HAL_ERROR;
+}
+
+// Programa el filtro HW con los IDs de filterIDs: filtros DUAL, dos IDs exactos
+// por elemento. Hay que parar el FDCAN porque el filtro global (que decide que
+// pasa con lo que no coincide) solo se puede cambiar en estado READY; la parada
+// dura microsegundos y se hace una vez, en el setup.
+bool CAN_BUS::applySTM32FDCANFilterIds()
+{
+    std::vector<uint32_t> stdIds;
+    bool anyExtended = false;
+    for (unsigned long id : filterIDs)
+    {
+        if (id <= 0x7FF)
+            stdIds.push_back(id);
+        else
+            anyExtended = true;
+    }
+    if (stdIds.empty() || (stdIds.size() + 1) / 2 > STM32_FDCAN_STD_FILTERS)
+    {
+        return false; // se queda el filtro del perfil; el software sigue filtrando
+    }
+
+    if (HAL_FDCAN_Stop(&hfdcan) != HAL_OK)
+    {
+        return false;
+    }
+
+    FDCAN_FilterTypeDef f;
+    f.IdType = FDCAN_STANDARD_ID;
+    bool filtersOk = true;
+    uint32_t index = 0;
+    for (size_t i = 0; i < stdIds.size(); i += 2)
+    {
+        f.FilterIndex  = index++;
+        f.FilterType   = FDCAN_FILTER_DUAL;
+        f.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+        f.FilterID1    = stdIds[i];
+        f.FilterID2    = (i + 1 < stdIds.size()) ? stdIds[i + 1] : stdIds[i];
+        filtersOk &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
+    }
+    // El resto de elementos (los que hubiera puesto el perfil) se deshabilitan.
+    f.FilterType   = FDCAN_FILTER_MASK;
+    f.FilterConfig = FDCAN_FILTER_DISABLE;
+    f.FilterID1    = 0x000;
+    f.FilterID2    = 0x000;
+    for (; index < STM32_FDCAN_STD_FILTERS; index++)
+    {
+        f.FilterIndex = index;
+        filtersOk &= (HAL_FDCAN_ConfigFilter(&hfdcan, &f) == HAL_OK);
+    }
+
+    // Estandar que no coincide -> fuera. Si algun filtro no se pudo escribir se
+    // acepta todo: mejor que filtre el software que perder un ID que si se quiere.
+    // Extendidas: si hay alguna en la lista pasan todas y las criba el software.
+    bool ok = filtersOk;
+    ok &= (HAL_FDCAN_ConfigGlobalFilter(
+        &hfdcan,
+        filtersOk   ? FDCAN_REJECT : FDCAN_ACCEPT_IN_RX_FIFO0,
+        anyExtended ? FDCAN_ACCEPT_IN_RX_FIFO0 : FDCAN_REJECT,
+        FDCAN_REJECT_REMOTE,
+        FDCAN_REJECT_REMOTE
+    ) == HAL_OK);
+
+    // Se arranca SIEMPRE, haya fallado lo que haya fallado: sin Start no hay CAN.
+    ok &= (HAL_FDCAN_Start(&hfdcan) == HAL_OK);
+    return ok;
 }
 #endif

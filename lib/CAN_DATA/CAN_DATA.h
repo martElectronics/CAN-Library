@@ -4,15 +4,21 @@
 #include <Arduino.h>
 #include "common.h"
 
-#if defined(ARDUNO_MICRO)
+#if defined(ARDUINO_MICRO)
 #include <ArduinoSTL.h>
 #endif
 
-#if defined(ESP32) || (ESP32S3)
+// Antes solo se incluian en ESP32: en STM32 compilaba de rebote, porque
+// MART_CAN.h los incluye... pero DESPUES de incluir este fichero.
+#if defined(ESP32) || defined(ESP32S3) || defined(STM32G4xx)
 #include <vector>
-    #include <algorithm>
-    #include <functional>
+#include <algorithm>
+#include <functional>
 #endif
+
+// Huecos que se reservan al construir. Mientras no se superen, insertar y
+// borrar paquetes no toca el heap (sin reservas nuevas en pleno loop).
+#define CAN_DATA_RESERVED_PACKETS 16
 
 class CAN_DATA
 {
@@ -30,6 +36,7 @@ public:
         // vuelva a llegar/encolarse. (El comentario antiguo decía lo contrario
         // —"persist… read multiple times"— y era falso.)
         allIdsRemovable = true;
+        packets.reserve(CAN_DATA_RESERVED_PACKETS);
     }
 
     CanPacketRawData dataRaw; // Raw data of CAN packet
@@ -45,6 +52,7 @@ public:
         {
             // If a packet with the same id is found, update its information
             it->size = packet.size;
+            it->typeExtendedId = packet.typeExtendedId;
             memcpy(it->bytes, packet.bytes, sizeof(packet.bytes));
         }
         else

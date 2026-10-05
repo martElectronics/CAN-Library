@@ -106,11 +106,11 @@ public:
         this->RX = RX;
         this->filterProfile = _nodeID;
         timeout = 100;
-        setupCANHardware(speed, txQueue, rxQueue);
-        // Default configuration
+        // Default configuration (antes del init: readBytes() ya consulta config)
         config.simulating = false;
         config.autoRemoveStoredFilters = true;
         config.sendStatusData = false;
+        setupCANHardware(speed, txQueue, rxQueue);
     }
     // Sends all stored data packets in DataOUT
     bool send();
@@ -224,7 +224,14 @@ public:
             CanPacketRawData packet;
             if (DataIN.getPacketById(canId, packet))
             {
-                if (data != nullptr && dataSize > 0)
+                // Una trama mas corta (DLC) que lo pedido no trae esos bytes: lo
+                // que hubiera en ellos seria de otra trama anterior. Se descarta.
+                if (packet.size < dataBytes)
+                {
+                    ERROR_PRINTLN("Error: getPacket DLC menor que los datos pedidos");
+                    ok = false;
+                }
+                else if (data != nullptr && dataSize > 0)
                 {
                     // Extract the data
                     if (!cmdConversionToLittleEndian)
@@ -331,7 +338,10 @@ public:
         Serial.println("]");
     }
 
-    // Calculates and writes the masks and filters to the MCP2515 registers given a set of IDs
+    // Solo los IDs de la lista llegan a DataIN. En STM32 tambien se programan en
+    // el filtro HW del FDCAN, para que el resto del trafico no ocupe la FIFO RX
+    // (3 huecos en el G4). Devuelve false si no se pudo programar el filtro HW;
+    // el filtro software se aplica igualmente.
     bool setFilters(const unsigned long ids[], unsigned size);
 
     // Prints the calculated masks and filters
@@ -348,9 +358,10 @@ public:
     void setCANStatusData();
 
     //** CAN BUS STATUS DATA **//
-    unsigned nodeID, statusPacketOffset;                                                             // IDs
-    unsigned runtimeTime, numRXPaqOK, numTXPaqOK, numTxPaqError;                                     // Actual data
-    unsigned previousStatusIntervalTime, previousStatusRuntimeTime, intervalTime, numCurrentSamples; // Aux data
+    unsigned nodeID = 0, statusPacketOffset = 0;                                                     // IDs
+    unsigned runtimeTime = 0, numRXPaqOK = 0, numTXPaqOK = 0, numTxPaqError = 0;                     // Actual data
+    unsigned previousStatusIntervalTime = 0, previousStatusRuntimeTime = 0, intervalTime = 0,
+             numCurrentSamples = 0;                                                                  // Aux data
 
     //** BUS_OFF REBOOT **//
     bool rebootBusFromError();
@@ -381,8 +392,12 @@ private:
     */
 
 #if defined(STM32G4xx)
+    // Filtros estandar que tiene el FDCAN del G4 en su RAM de mensajes.
+    static constexpr uint32_t STM32_FDCAN_STD_FILTERS = 28;
+
     HAL_StatusTypeDef initSTM32FDCAN(unsigned int speed);
-    void configSTM32FDCANFilter(int profile);
+    HAL_StatusTypeDef configSTM32FDCANFilter(int profile);
+    bool applySTM32FDCANFilterIds();
 #endif
 
 #if defined(ESP32) || defined(ESP32S3)
